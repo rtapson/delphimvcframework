@@ -354,6 +354,251 @@ resourcestring
     '  Width = 415' + sLineBreak +
     'end';
 
+  // 0: DIConfiguration unit name
+  // 1: ControllerUnit
+  // 2: ControllerClass
+  sSpring4DDIConfiguration =
+    'unit %0:s;' + sLineBreak +
+    '' + sLineBreak +
+    'interface' + sLineBreak +
+    '' + sLineBreak +
+    'uses' + sLineBreak +
+    '  Spring, Spring.Container;' + sLineBreak +
+    '' + sLineBreak +
+    'procedure BuildContainer;' + sLineBreak +
+    'function Container: TContainer;' + sLineBreak +
+    '' + sLineBreak +
+    'implementation' + sLineBreak +
+    '' + sLineBreak +
+    'uses Spring.Container.Common, %1:s;' + sLineBreak +
+    '' + sLineBreak +
+    'var' + sLineBreak +
+    '  GContainer: TContainer = nil;' + sLineBreak +
+    '' + sLineBreak +
+    'function Container: TContainer;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  Result := GContainer;' + sLineBreak +
+    'end;' + sLineBreak +
+    '' + sLineBreak +
+    'procedure BuildContainer;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  Assert(not Assigned(GContainer), ''Container already built'');' + sLineBreak +
+    '  GContainer := TContainer.Create;' + sLineBreak +
+    '  // Registering controllers' + sLineBreak +
+    '  GContainer.RegisterType<%2:s>;' + sLineBreak +
+    '' + sLineBreak +
+    '  // Registering Services' + sLineBreak +
+    '  //GContainer.RegisterType<TUsersService>.Implements<IUsersService>;' + sLineBreak +
+    '  //GContainer.RegisterType<TCustomersService>.Implements<ICustomersService>;' + sLineBreak +
+    '' + sLineBreak +
+    '  // Maybe that the common service must be register as singleton or as singleton per thread' + sLineBreak +
+    '  // because must be the same instances between the first and the second service (e.g. DB transaction)' + sLineBreak +
+    '' + sLineBreak +
+    '  // Transient registration (default)' + sLineBreak +
+    '  // GContainer.RegisterType<TCommonService>.Implements<ICommonService>;' + sLineBreak +
+    '' + sLineBreak +
+    '  // Singleton registration for all thread. WARNING!!! It is shared between HTTP calls.' + sLineBreak +
+    '  // GContainer.RegisterType<TCommonService>.Implements<ICommonService>.AsSingleton(TRefCounting.True);' + sLineBreak +
+    '' + sLineBreak +
+    '  // Singleton per thread registration. WARNING!!! (read below) Shared by all services within the same HTTP call.' + sLineBreak +
+    '  // GContainer.RegisterType<TCommonService>.Implements<ICommonService>.AsSingletonPerThread(TRefCounting.True);' + sLineBreak +
+    '' + sLineBreak +
+    '  {' + sLineBreak +
+    '   About "AsSingletonPerThread" Stefan Glienke said:' + sLineBreak +
+    '   It might be confusing as people are assuming that the container magically' + sLineBreak +
+    '   knows when a thread ends to destroy a singleton per thread. But that is not the case.' +  sLineBreak +
+    '   In fact it gets created once per threadid. That means even if your thread has' + sLineBreak +
+    '   ended and a new one starts later using the same threadid you get the' + sLineBreak +
+    '   same object as before.' + sLineBreak +
+    '   If you don''t use a threadpool where you have the same threads running all the' + sLineBreak +
+    '   time performing tasks it is not a good idea to use singleton per thread.' + sLineBreak +
+    '   You might use transient then to always create a new instance or - and this' + sLineBreak +
+    '   is imo the better solution - use a threadpool which limits the objects' + sLineBreak +
+    '   created (and also reduce the creation of thread objects).' + sLineBreak +
+    '   Nevertheless singleton per thread instances will always be destroyed' + sLineBreak +
+    '   when the container is getting destroyed, not earlier.' + sLineBreak +
+    '   This is also not a strange behavior of our container but also Castle Windsor' + sLineBreak +
+    '   or Unity. However there is also advice against using it there.' + sLineBreak +
+    '   If you are looking more for something like singleton per request I suggest' + sLineBreak +
+    '   using transient and making sure that at the start of the request it gets' + sLineBreak +
+    '   resolved from the container and then passed around where ever needed (think' + sLineBreak +
+    '   about implementing refcounting to your data module!) and dropping it at the' + sLineBreak +
+    '   end of the request which makes it getting destroyed due to ref counting.' + sLineBreak +
+    '  }' + sLineBreak +
+    '' + sLineBreak +
+    '  // Build the container' + sLineBreak +
+    '  GContainer.Build;' + sLineBreak +
+    'end;' + sLineBreak +
+    '' + sLineBreak +
+    'initialization' + sLineBreak +
+    '' + sLineBreak +
+    'finalization' + sLineBreak +
+    '  GContainer.Free;' + sLineBreak +
+    '' + sLineBreak +
+    'end.';
+
+  // 0 - Unit Name
+  // 1 - Class Name
+  // 2 - Sample Methods - Interface
+  // 3 - Sample Methods - Implementation
+  // 4 - Action Filters - Interface
+  // 5 - Action Filters - Implementation
+  // 8: Controller path
+  sSpring4DController =
+    'unit %0:s;' + sLineBreak +
+    '' + sLineBreak +
+    'interface' + sLineBreak +
+    '' + sLineBreak +
+    'uses' + sLineBreak +
+    '  MVCFramework, MVCFramework.Commons, Spring.Container.Common;' + sLineBreak +
+    '' + sLineBreak +
+    'type' + sLineBreak +
+    '' + sLineBreak +
+    '  [MVCPath(''/%8:s'')]' + sLineBreak +
+    '  %1:s = class(TMVCController)' + sLineBreak +
+    '  private' + sLineBreak +
+    '    //[Inject]' + sLineBreak +
+    '    //fUsersService: IUsersService;' + sLineBreak +
+    '  public' + sLineBreak +
+    '    [MVCPath]' + sLineBreak +
+    '    [MVCHTTPMethod([httpGET])]' + sLineBreak +
+    '    procedure Index;' + sLineBreak +
+    '  end;' + sLineBreak +
+    '' + sLineBreak +
+    'implementation' + sLineBreak +
+    '' + sLineBreak +
+    'uses' + sLineBreak +
+    '  System.SysUtils, MVCFramework.Logger, System.StrUtils;' + sLineBreak +
+    '' + sLineBreak +
+    'procedure %1:s.Index;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  //ContentType := BuildContentType(TMVCMediaType.TEXT_PLAIN, TMVCCharSet.ISO88591);' + sLineBreak +
+    '  //ResponseStream.AppendLine(''THIS IS A TEST FOR SPRING4D INTEGRATION'');' + sLineBreak +
+    '  //ResponseStream.AppendLine(''==============================================================='');' + sLineBreak +
+    '  //ResponseStream.AppendLine(''fUsersService.GetUserNameByID(1234)          => '' + ' + sLineBreak +
+    '  //fUsersService.GetUserNameByID(1234));' + sLineBreak +
+    '  RenderResponseStream;' + sLineBreak +
+    'end;' + sLineBreak +
+    '' + sLineBreak +
+    'end.';
+
+  // 0 = unit name
+  // 1 = webmodule classname
+  // 2 = controller unit
+  // 3 - controller class name
+  sSpring4DWebModule =
+  'unit %0:s;' + sLineBreak +
+  '' + sLineBreak +
+  'interface' + sLineBreak +
+  '' + sLineBreak +
+  'uses' + sLineBreak +
+  '  System.SysUtils,' + sLineBreak +
+  '  System.Classes,' + sLineBreak +
+  '  Web.HTTPApp,' + sLineBreak +
+  '  MVCFramework;' + sLineBreak +
+  '' + sLineBreak +
+  'type' + sLineBreak +
+  '  %1:s = class(TWebModule)' + sLineBreak +
+  '    procedure WebModuleCreate(Sender: TObject);' + sLineBreak +
+  '    procedure WebModuleDestroy(Sender: TObject);' + sLineBreak +
+  '  private' + sLineBreak +
+  '    FMVC: TMVCEngine;' + sLineBreak +
+  '  public' + sLineBreak +
+  '  end;' + sLineBreak +
+  '' + sLineBreak +
+  'var' + sLineBreak +
+  '  WebModuleClass: TComponentClass = %1:s;' + sLineBreak +
+  '' + sLineBreak +
+  'implementation' + sLineBreak +
+  '' + sLineBreak +
+  '{$R *.dfm}' + sLineBreak +
+  '' + sLineBreak +
+  'uses' + sLineBreak +
+  ' %2:s,' + sLineBreak +
+  ' System.IOUtils,' + sLineBreak +
+  ' MVCFramework.Commons,' + sLineBreak +
+  ' MVCFramework.Middleware.Compression,' + sLineBreak +
+  ' //CustomTypesSerializersU,' + sLineBreak +
+  ' Spring;' + sLineBreak +
+  '' + sLineBreak +
+  'procedure %1:s.WebModuleCreate(Sender: TObject);' + sLineBreak +
+  'begin' + sLineBreak +
+  '  FMVC := TMVCEngine.Create(Self,' + sLineBreak +
+  '    procedure(Config: TMVCConfig)' + sLineBreak +
+  '    begin' + sLineBreak +
+  '      // enable static files' + sLineBreak +
+  '      Config[TMVCConfigKey.DocumentRoot] := TPath.Combine(ExtractFilePath(GetModuleName(HInstance)), ''www'');' + sLineBreak +
+  '      // session timeout (0 means session cookie)' + sLineBreak +
+  '      Config[TMVCConfigKey.SessionTimeout] := ''0'';' + sLineBreak +
+  '      // default content-type' + sLineBreak +
+  '      Config[TMVCConfigKey.DefaultContentType] := TMVCConstants.DEFAULT_CONTENT_TYPE;' + sLineBreak +
+  '      // default content charset' + sLineBreak +
+  '      Config[TMVCConfigKey.DefaultContentCharset] := TMVCConstants.DEFAULT_CONTENT_CHARSET;' + sLineBreak +
+  '      // unhandled actions are permitted?' + sLineBreak +
+  '      Config[TMVCConfigKey.AllowUnhandledAction] := ''false'';' + sLineBreak +
+  '      // default view file extension' + sLineBreak +
+  '      Config[TMVCConfigKey.DefaultViewFileExtension] := ''html'';' + sLineBreak +
+  '      // view path' + sLineBreak +
+  '      Config[TMVCConfigKey.ViewPath] := ''templates'';' + sLineBreak +
+  '      // Max Record Count for automatic Entities CRUD' + sLineBreak +
+  '      Config[TMVCConfigKey.MaxEntitiesRecordCount] := ''20'';' + sLineBreak +
+  '      // Enable Server Signature in response' + sLineBreak +
+  '      Config[TMVCConfigKey.ExposeServerSignature] := ''true'';' + sLineBreak +
+  '      // Define a default URL for requests that don''t map to a route or a file (useful for client side web app)' + sLineBreak +
+  '      Config[TMVCConfigKey.FallbackResource] := ''index.html'';' + sLineBreak +
+  '    end);' + sLineBreak +
+  '  FMVC.AddController(%3:s);' + sLineBreak +
+  '  // To enable compression (deflate, gzip) just add this middleware as the last one' + sLineBreak +
+  '  FMVC.AddMiddleware(TMVCCompressionMiddleware.Create);' + sLineBreak +
+  '  //FMVC.Serializers.Items[''application/json''].RegisterTypeSerializer(typeinfo(Nullable<System.Integer>),' + sLineBreak +
+  '  //TNullableIntegerSerializer.Create);' + sLineBreak +
+  '  //FMVC.Serializers.Items[''application/json''].RegisterTypeSerializer(typeinfo(Nullable<System.Currency>),' + sLineBreak +
+  '  //TNullableCurrencySerializer.Create);' + sLineBreak +
+  '  //FMVC.Serializers.Items[''application/json''].RegisterTypeSerializer(typeinfo(Nullable<System.string>),' + sLineBreak +
+  '  //TNullableStringSerializer.Create);' + sLineBreak +
+  'end;' + sLineBreak +
+  '' + sLineBreak +
+  'procedure %1:s.WebModuleDestroy(Sender: TObject);' + sLineBreak +
+  'begin' + sLineBreak +
+  ' FMVC.Free;' + sLineBreak +
+  'end;' + sLineBreak +
+  '' + sLineBreak +
+  'end.';
+
+  { Delphi template code }
+  // 0 - project name
+  sISAPIProject =
+    'library %0:s;' + sLineBreak +
+    '' + sLineBreak +
+    'uses' + sLineBreak +
+    '  Winapi.ActiveX,' + sLineBreak +
+    '  System.Win.ComObj,' + sLineBreak +
+    '  System.SysUtils,' + sLineBreak +
+    '  MVCFramework.Logger,' + sLineBreak +
+    '  MVCFramework.Commons,' + sLineBreak +
+    '  MVCFramework.REPLCommandsHandlerU,' + sLineBreak +
+    '  Web.ReqMulti,' + sLineBreak +
+    '  Web.WebReq,' + sLineBreak +
+    '  Web.WebBroker,' + sLineBreak +
+    '  Web.Win.ISAPIApp,' + sLineBreak +
+    '  Web.Win.ISAPIThreadPool,' + sLineBreak +
+    '  IdHTTPWebBrokerBridge;' + sLineBreak +
+    '' + sLineBreak +
+    '' + sLineBreak +
+    'exports' + sLineBreak +
+    '  GetExtensionVersion,' + sLineBreak +
+    '  HttpExtensionProc,' + sLineBreak +
+    '  TerminateExtension;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  CoInitFlags := COINIT_MULTITHREADED;' + sLineBreak +
+    '  Application.Initialize;' + sLineBreak +
+    '  Application.WebModuleClass := WebModuleClass;' + sLineBreak +
+    '  Application.Run;' + sLineBreak +
+    '' + sLineBreak +
+    'end.';
+
+
+
 implementation
 
 end.

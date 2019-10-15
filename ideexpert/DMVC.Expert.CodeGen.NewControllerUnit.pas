@@ -38,30 +38,29 @@ uses
 
 type
   TNewControllerUnitEx = class(TNewUnit)
-  protected
+  private
     FCreateIndexMethod: Boolean;
     FCreateCRUDMethods: Boolean;
     FCreateActionFiltersMethods: Boolean;
+    FUseSpring4DDI: Boolean;
     FControllerClassName: string;
-    function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string)
-      : IOTAFile; override;
+  protected
+    function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile; override;
   public
-    constructor Create(const aCreateIndexMethod, aCreateCRUDMethods, aCreateActionFiltersMethods
-      : Boolean; const AControllerClassName: string;
-      const APersonality: string = '');
+    constructor Create(const aCreateIndexMethod, aCreateCRUDMethods, aCreateActionFiltersMethods, aUseSpring4DDI
+      : Boolean; const AControllerClassName: string; const APersonality: string = '');
   end;
 
 implementation
 
 uses
   System.SysUtils,
-  VCL.Dialogs,
   DMVC.Expert.CodeGen.Templates,
   DMVC.Expert.CodeGen.SourceFile;
 
-constructor TNewControllerUnitEx.Create(const aCreateIndexMethod, aCreateCRUDMethods, aCreateActionFiltersMethods
-  : Boolean; const AControllerClassName: string;
-  const APersonality: string = '');
+constructor TNewControllerUnitEx.Create(const aCreateIndexMethod, aCreateCRUDMethods, aCreateActionFiltersMethods, aUseSpring4DDI
+      : Boolean; const AControllerClassName: string;
+      const APersonality: string = '');
 begin
   Assert(Length(AControllerClassName) > 0);
   FAncestorName := '';
@@ -72,6 +71,7 @@ begin
   FCreateIndexMethod := aCreateIndexMethod;
   FCreateCRUDMethods := aCreateCRUDMethods;
   FCreateActionFiltersMethods := aCreateActionFiltersMethods;
+  FUseSpring4DDI := aUseSpring4DDI;
   Personality := APersonality;
 end;
 
@@ -88,8 +88,12 @@ var
   lActionFiltersMethodsImpl: string;
   lCRUDMethodsIntf: string;
   lCRUDMethodsImpl: string;
+  lControllerPath: string;
 begin
-  lControllerUnit := sControllerUnit;
+  if FUseSpring4DDI then
+    lControllerUnit := sSpring4DController
+  else
+    lControllerUnit := sControllerUnit;
   lIndexMethodIntf := sIndexMethodIntf;
   lIndexMethodImpl := Format(sIndexMethodImpl, [FControllerClassName]);
   lCRUDMethodsIntf := sCRUDMethodsIntf;
@@ -117,12 +121,13 @@ begin
     lActionFiltersMethodsImpl := '';
   end;
 
+  lControllerPath := FControllerClassName.Substring(1).Replace('Controller', '', [rfIgnoreCase]).ToLower;
+
   // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
   // So using method mentioned by Marco Cantu.
-  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('',
-    lUnitIdent, lFormName, lFileName);
-  Result := TSourceFile.Create(sControllerUnit,
-    [lUnitIdent, FControllerClassName, lIndexMethodIntf, lIndexMethodImpl, lActionFiltersMethodsIntf, lActionFiltersMethodsImpl, lCRUDMethodsIntf, lCRUDMethodsImpl]);
+  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('', lUnitIdent, lFormName, lFileName);
+  Result := TSourceFile.Create(lControllerUnit,
+    [lUnitIdent, FControllerClassName, lIndexMethodIntf, lIndexMethodImpl, lActionFiltersMethodsIntf, lActionFiltersMethodsImpl, lCRUDMethodsIntf, lCRUDMethodsImpl, lControllerPath]);
 end;
 
 end.

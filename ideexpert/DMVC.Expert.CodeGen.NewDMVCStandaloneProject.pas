@@ -28,81 +28,62 @@
 {            https://github.com/VSoftTechnologies/DUnitX                    }
 {***************************************************************************}
 
-unit DMVC.Expert.CodeGen.NewWebModuleUnit;
+unit DMVC.Expert.CodeGen.NewDMVCStandaloneProject;
 
 interface
 
 uses
-  ToolsApi,
-  DMVC.Expert.CodeGen.NewUnit;
+  ToolsAPI,
+  DMVC.Expert.CodeGen.NewProject;
 
 type
-  TNewWebModuleUnitEx = class(TNewUnit)
+  TDMVCStandaloneProjectFile = class(TNewProjectEx)
   private
-    FUnitIdent, FFormName, FFileName : String;
-    FMiddlewares: TArray<String>;
+    FDefaultPort: Integer;
+    procedure SetDefaultPort(const Value: Integer);
   protected
-    FWebModuleClassName : string;
-    FControllerClassName: string;
-    FControllerUnit: string;
-    FUseSpring4dDI: Boolean;
-    function GetCreatorType: string; override;
-    function NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile; override;
-    function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile; override;
+    function NewProjectSource(const ProjectName: string): IOTAFile; override;
+    function GetFrameworkType: string; override;
   public
-    constructor Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; aUseSpring4DDI: Boolean);
+    constructor Create; overload;
+    constructor Create(const APersonality: string); overload;
+    property DefaultPort: Integer read FDefaultPort write SetDefaultPort;
   end;
 
 implementation
 
 uses
-  Winapi.Windows,
-  System.SysUtils,
-  VCL.Dialogs,
+  DMVC.Expert.CodeGen.SourceFile,
   DMVC.Expert.CodeGen.Templates,
-  DMVC.Expert.CodeGen.SourceFile;
+  System.SysUtils;
 
-constructor TNewWebModuleUnitEx.Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; aUseSpring4DDI: Boolean);
+constructor TDMVCStandaloneProjectFile.Create;
 begin
-  Assert(Length(aWebModuleClassName) > 0);
-  FAncestorName := '';
-  FFormName := '';
-  FImplFileName := '';
-  FIntfFileName := '';
-  FWebModuleClassName := aWebModuleClassName;
-  FControllerClassName := aControllerClassName;
-  FControllerUnit := aControllerUnit;
-  FMiddlewares := AMiddlewares;
+  // TODO: Figure out how to make this be DMVCProjectX where X is the next available.
+  // Return Blank and the project will be 'ProjectX.dpr' where X is the next available number
+  FFileName := '';
+  FDefaultPort := 0;
+end;
+
+constructor TDMVCStandaloneProjectFile.Create(const APersonality: string);
+begin
+  Create;
   Personality := APersonality;
-  FUseSpring4dDI := aUseSpring4DDI;
-  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName( '', FUnitIdent, FFormName, FFileName);
 end;
 
-function TNewWebModuleUnitEx.GetCreatorType: string;
+function TDMVCStandaloneProjectFile.GetFrameworkType: string;
 begin
-  Result := sForm;
+  Result := 'VCL';
 end;
 
-function TNewWebModuleUnitEx.NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile;
+function TDMVCStandaloneProjectFile.NewProjectSource(const ProjectName: string): IOTAFile;
 begin
-  Result := TSourceFile.Create(sWebModuleDFM, [FormIdent, FWebModuleClassName]);
+  Result := TSourceFile.Create(sDMVCDPR, [ProjectName, FDefaultPort]);
 end;
 
-function TNewWebModuleUnitEx.NewImplSource(const ModuleIdent, FormIdent,  AncestorIdent: string): IOTAFile;
-var
-  lWebModuleUnit: string;
+procedure TDMVCStandaloneProjectFile.SetDefaultPort(const Value: Integer);
 begin
-  if FUseSpring4dDI then
-    lWebModuleUnit := sSpring4DWebModule
-  else
-    lWebModuleUnit := sWebModuleUnit;
-
-  //ModuleIdent is blank for some reason.
-  // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
-  // So using method mentioned by Marco Cantu.
-  Result := TSourceFile.Create(lWebModuleUnit, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares]);
+  FDefaultPort := Value;
 end;
-
-
 
 end.

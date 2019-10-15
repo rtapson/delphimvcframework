@@ -3,9 +3,9 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   Top = 0
   BorderStyle = bsDialog
   Caption = 'New DMVCFramework Project Wizard'
-  ClientHeight = 572
-  ClientWidth = 354
-  Color = clBtnFace
+  ClientHeight = 397
+  ClientWidth = 481
+  Color = clWindow
   Constraints.MinHeight = 145
   Constraints.MinWidth = 250
   Font.Charset = DEFAULT_CHARSET
@@ -17,28 +17,14 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   Position = poMainFormCenter
   OnCreate = FormCreate
   DesignSize = (
-    354
-    572)
+    481
+    397)
   PixelsPerInch = 96
   TextHeight = 13
-  object lblWbModule: TLabel
-    Left = 24
-    Top = 157
-    Width = 114
-    Height = 13
-    Caption = 'WebModule Class Name'
-  end
-  object Label2: TLabel
-    Left = 24
-    Top = 467
-    Width = 55
-    Height = 13
-    Caption = 'Server Port'
-  end
   object Image1: TImage
     Left = 0
     Top = 0
-    Width = 354
+    Width = 481
     Height = 101
     Cursor = crHandPoint
     Hint = 'Go to the DelphiMVCFramework developer guide'
@@ -370,6 +356,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
       4F1140101111F11401041111114F1140101111F11401041111114FFD0F3B403E
       DAAF5C25370000000049454E44AE426082}
     OnClick = Image1Click
+    ExplicitWidth = 354
   end
   object lblFrameworkVersion: TLabel
     Left = 123
@@ -386,142 +373,283 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     Font.Style = [fsBold]
     ParentFont = False
   end
-  object gbControllerUnitOptions: TGroupBox
-    Left = 8
-    Top = 281
-    Width = 338
-    Height = 169
-    Anchors = [akLeft, akTop, akRight]
-    Caption = 'Controller Unit Options'
-    TabOrder = 4
-    DesignSize = (
-      338
-      169)
-    object lblClassName: TLabel
-      Left = 16
-      Top = 118
-      Width = 105
-      Height = 13
-      Caption = 'Controller Class Name'
-    end
-    object Label1: TLabel
-      Left = 16
-      Top = -48
-      Width = 31
-      Height = 13
-      Caption = 'Label1'
-    end
-    object chkCreateIndexMethod: TCheckBox
-      Left = 16
-      Top = 31
-      Width = 306
-      Height = 17
-      Anchors = [akLeft, akTop, akRight]
-      Caption = 'Create Index And Sample Actions'
-      Checked = True
-      State = cbChecked
-      TabOrder = 0
-    end
-    object edtClassName: TEdit
-      Left = 16
-      Top = 137
-      Width = 306
-      Height = 21
-      Anchors = [akLeft, akTop, akRight]
-      TabOrder = 3
-    end
-    object chkCreateActionFiltersMethods: TCheckBox
-      Left = 16
-      Top = 54
-      Width = 306
-      Height = 17
-      Anchors = [akLeft, akTop, akRight]
-      Caption = 'Create Action Filters Methods'
-      Checked = True
-      State = cbChecked
-      TabOrder = 1
-    end
-    object chkCreateCRUDMethods: TCheckBox
-      Left = 16
-      Top = 77
-      Width = 306
-      Height = 17
-      Anchors = [akLeft, akTop, akRight]
-      Caption = 'Create Sample CRUD Actions'
-      Checked = True
-      State = cbChecked
-      TabOrder = 2
-    end
-  end
   object btnOK: TButton
-    Left = 190
-    Top = 539
+    Left = 317
+    Top = 364
     Width = 75
     Height = 25
+    Action = actCreate
     Anchors = [akRight, akBottom]
-    Caption = 'OK'
     Default = True
     ModalResult = 1
-    TabOrder = 6
+    TabOrder = 0
   end
   object btnCancel: TButton
-    Left = 271
-    Top = 539
+    Left = 398
+    Top = 364
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
-    TabOrder = 7
-  end
-  object chkCreateControllerUnit: TCheckBox
-    Left = 24
-    Top = 226
-    Width = 287
-    Height = 17
-    Anchors = [akLeft, akTop, akRight]
-    Caption = 'Create Controller Unit'
-    Checked = True
-    State = cbChecked
-    TabOrder = 3
-    OnClick = chkCreateControllerUnitClick
-  end
-  object chkAddToProjectGroup: TCheckBox
-    Left = 24
-    Top = 120
-    Width = 338
-    Height = 17
-    Anchors = [akLeft, akTop, akRight]
-    Caption = 'Add to Existing Project Group'
-    Checked = True
-    State = cbChecked
-    TabOrder = 0
-  end
-  object edtWebModuleName: TEdit
-    Left = 24
-    Top = 176
-    Width = 305
-    Height = 21
     TabOrder = 1
   end
-  object edtServerPort: TEdit
-    Left = 24
-    Top = 486
-    Width = 65
-    Height = 21
-    TabOrder = 5
-    TextHint = '8080'
-  end
-  object chkAnalyticsMiddleware: TCheckBox
-    Left = 24
-    Top = 203
-    Width = 287
-    Height = 17
-    Anchors = [akLeft, akTop, akRight]
-    Caption = 'Add analytics support'
+  object Pages: TPageControl
+    Left = 8
+    Top = 107
+    Width = 465
+    Height = 242
+    ActivePage = tbsProjects
+    Anchors = [akLeft, akTop, akRight, akBottom]
     TabOrder = 2
-    Visible = False
-    OnClick = chkCreateControllerUnitClick
+    OnChange = PagesChange
+    object tbsProjects: TTabSheet
+      Caption = 'Projects'
+      ImageIndex = 4
+      DesignSize = (
+        457
+        214)
+      object chkAddToProjectGroup: TCheckBox
+        Left = 11
+        Top = 3
+        Width = 305
+        Height = 17
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'Add to Existing Project Group'
+        Checked = True
+        State = cbChecked
+        TabOrder = 0
+      end
+      object GroupBox2: TGroupBox
+        Left = 11
+        Top = 26
+        Width = 266
+        Height = 103
+        Caption = 'Select Project Types to Create'
+        TabOrder = 1
+        object lstProjectTypes: TCheckListBox
+          Left = 11
+          Top = 20
+          Width = 238
+          Height = 69
+          BorderStyle = bsNone
+          IntegralHeight = True
+          ItemHeight = 23
+          Items.Strings = (
+            'Standalone Server'
+            'Windows Service Application'
+            'ISAPI Module')
+          Style = lbOwnerDrawFixed
+          TabOrder = 0
+          OnClick = lstProjectTypesClick
+        end
+      end
+    end
+    object tabStart: TTabSheet
+      Caption = 'Server/Web Module'
+      object lblWbModule: TLabel
+        Left = 12
+        Top = 3
+        Width = 114
+        Height = 13
+        Caption = 'WebModule Class Name'
+      end
+      object Label2: TLabel
+        Left = 12
+        Top = 49
+        Width = 55
+        Height = 13
+        Caption = 'Server Port'
+      end
+      object edtWebModuleName: TEdit
+        Left = 12
+        Top = 22
+        Width = 305
+        Height = 21
+        TabOrder = 0
+      end
+      object edtServerPort: TEdit
+        Left = 12
+        Top = 68
+        Width = 65
+        Height = 21
+        TabOrder = 1
+        TextHint = '8080'
+      end
+      object GroupBox1: TGroupBox
+        Left = 12
+        Top = 100
+        Width = 429
+        Height = 101
+        Caption = 'Project Options'
+        TabOrder = 2
+        object chlProjectOptions: TCheckListBox
+          Left = 6
+          Top = 16
+          Width = 411
+          Height = 69
+          OnClickCheck = chlProjectOptionsClickCheck
+          BorderStyle = bsNone
+          Columns = 2
+          IntegralHeight = True
+          ItemHeight = 23
+          Items.Strings = (
+            'Use Spring4D DI'
+            'Add Analytics support'
+            'Add TMS Aurelius support')
+          Style = lbOwnerDrawFixed
+          TabOrder = 0
+          OnClick = chlProjectOptionsClick
+        end
+      end
+    end
+    object tabController: TTabSheet
+      Caption = 'Controller'
+      ImageIndex = 1
+      DesignSize = (
+        457
+        214)
+      object chkCreateControllerUnit: TCheckBox
+        Left = 16
+        Top = 3
+        Width = 305
+        Height = 17
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'Create Controller Unit'
+        Checked = True
+        State = cbChecked
+        TabOrder = 0
+        OnClick = chkCreateControllerUnitClick
+      end
+      object gbControllerUnitOptions: TGroupBox
+        Left = 32
+        Top = 26
+        Width = 321
+        Height = 169
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'Controller Unit Options'
+        TabOrder = 1
+        DesignSize = (
+          321
+          169)
+        object lblClassName: TLabel
+          Left = 16
+          Top = 118
+          Width = 105
+          Height = 13
+          Caption = 'Controller Class Name'
+        end
+        object Label1: TLabel
+          Left = 16
+          Top = -48
+          Width = 31
+          Height = 13
+          Caption = 'Label1'
+        end
+        object chkCreateIndexMethod: TCheckBox
+          Left = 16
+          Top = 31
+          Width = 289
+          Height = 17
+          Anchors = [akLeft, akTop, akRight]
+          Caption = 'Create Index And Sample Actions'
+          Checked = True
+          State = cbChecked
+          TabOrder = 0
+        end
+        object edtClassName: TEdit
+          Left = 16
+          Top = 137
+          Width = 289
+          Height = 21
+          Anchors = [akLeft, akTop, akRight]
+          TabOrder = 3
+        end
+        object chkCreateActionFiltersMethods: TCheckBox
+          Left = 16
+          Top = 54
+          Width = 289
+          Height = 17
+          Anchors = [akLeft, akTop, akRight]
+          Caption = 'Create Action Filters Methods'
+          Checked = True
+          State = cbChecked
+          TabOrder = 1
+        end
+        object chkCreateCRUDMethods: TCheckBox
+          Left = 16
+          Top = 77
+          Width = 289
+          Height = 17
+          Anchors = [akLeft, akTop, akRight]
+          Caption = 'Create Sample CRUD Actions'
+          Checked = True
+          State = cbChecked
+          TabOrder = 2
+        end
+      end
+    end
+    object Service: TTabSheet
+      Caption = 'Service'
+      ImageIndex = 2
+      OnShow = ServiceShow
+      object chkCreateService: TCheckBox
+        Left = 17
+        Top = 9
+        Width = 136
+        Height = 17
+        Caption = 'Create Service Unit'
+        TabOrder = 0
+      end
+    end
+    object Summary: TTabSheet
+      Caption = 'Summary'
+      ImageIndex = 3
+      object mmoSummary: TMemo
+        Left = 3
+        Top = 3
+        Width = 446
+        Height = 208
+        BorderStyle = bsNone
+        ReadOnly = True
+        TabOrder = 0
+      end
+    end
+  end
+  object btnPrev: TButton
+    Left = 136
+    Top = 364
+    Width = 75
+    Height = 25
+    Action = actPrevPage
+    Enabled = False
+    TabOrder = 3
+  end
+  object btnNext: TButton
+    Left = 217
+    Top = 364
+    Width = 75
+    Height = 25
+    Action = actNextPage
+    TabOrder = 4
+  end
+  object ActionList1: TActionList
+    Left = 24
+    Top = 352
+    object actPrevPage: TAction
+      Caption = '<< Prev'
+      OnExecute = actPrevPageExecute
+      OnUpdate = actPrevPageUpdate
+    end
+    object actNextPage: TAction
+      Caption = 'Next >>'
+      OnExecute = actNextPageExecute
+      OnUpdate = actNextPageUpdate
+    end
+    object actCreate: TAction
+      Caption = 'Create'
+      OnUpdate = actCreateUpdate
+    end
   end
 end

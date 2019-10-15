@@ -27,76 +27,54 @@
 {                                                                           }
 {            https://github.com/VSoftTechnologies/DUnitX                    }
 {***************************************************************************}
-
-unit DMVC.Expert.NewUnitWizardEx;
+unit DMVC.Expert.CodeGen.NewDMVCISAPIProject;
 
 interface
 
 uses
-  ToolsApi,
-  VCL.Graphics,
-  PlatformAPI;
+  ToolsAPI,
+  DMVC.Expert.CodeGen.NewProject;
 
 type
-  TDMVCNewUnitWizard = class
+  TDMVCISAPIProjectFile = class(TNewProjectEx)
+  protected
+    function NewProjectSource(const ProjectName: string): IOTAFile; override;
+    function GetFrameworkType: string; override;
   public
-    class procedure RegisterDMVCNewUnitWizard(const APersonality: string);
+    constructor Create; overload;
+    constructor Create(const APersonality: string); overload;
   end;
 
 implementation
 
 uses
-  DMVC.Expert.Forms.NewUnitWizard,
-  DMVC.Expert.CodeGen.NewControllerUnit,
-  Vcl.Controls,
-  Vcl.Forms,
-  WinApi.Windows,
-  ExpertsRepository;
+  DMVC.Expert.CodeGen.SourceFile,
+  DMVC.Expert.CodeGen.Templates,
+  System.SysUtils;
 
-resourcestring
- sNewDMVCUnitCaption = 'DelphiMVCFramework Controller';
- sNewDMVCProjectHint = 'Create New DelphiMVCFramework Controller Unit';
+{ TDMVCISAPIProjectFile }
 
-class procedure TDMVCNewUnitWizard.RegisterDMVCNewUnitWizard(const aPersonality: string);
+constructor TDMVCISAPIProjectFile.Create(const APersonality: string);
 begin
-  RegisterPackageWizard(TExpertsRepositoryProjectWizardWithProc.Create(aPersonality,
-                        sNewDMVCProjectHint, sNewDMVCUnitCaption, 'DMVC.Wizard.NewUnitWizard',  // do not localize
-                        'DMVCFramework', 'DMVCFramework Team - https://github.com/danieleteti/delphimvcframework', // do not localize
-    procedure
-    var
-      WizardForm     : TfrmDMVCNewUnit;
-      ModuleServices : IOTAModuleServices;
-      Project        : IOTAProject;
-      ControllerUnit : IOTAModule;
-    begin
-      WizardForm := TfrmDMVCNewUnit.Create(Application);
-      try
-        if WizardForm.ShowModal = mrOk then
-        begin
-          ModuleServices := (BorlandIDEServices as IOTAModuleServices);
-          Project :=  GetActiveProject;
-          ControllerUnit := ModuleServices.CreateModule(
-                           TNewControllerUnitEx.Create(WizardForm.CreateIndexMethod,
-                                                       WizardForm.CreateCRUDMethods,
-                                                       WizardForm.CreateActionFiltersMethods,
-                                                       WizardForm.UseSpring4DDI,
-                                                       WizardForm.ControllerClassName,
-                                                       aPersonality));
-          if Project <> nil then
-          begin
-            Project.AddFile(ControllerUnit.FileName,true);
-          end;
-        end;
-      finally
-        WizardForm.Free;
-      end;
-    end,
-            function: Cardinal
-            begin
-              Result := LoadIcon(HInstance,'DMVCNewUnitIcon');
-            end,
-            TArray<string>.Create(cWin32Platform, cWin64Platform),
-            nil));
- end;
+  Create;
+  Personality := APersonality;
+end;
+
+constructor TDMVCISAPIProjectFile.Create;
+begin
+  // TODO: Figure out how to make this be DMVCProjectX where X is the next available.
+  // Return Blank and the project will be 'ProjectX.dpr' where X is the next available number
+  FFileName := '';
+end;
+
+function TDMVCISAPIProjectFile.GetFrameworkType: string;
+begin
+  Result := 'VCL';
+end;
+
+function TDMVCISAPIProjectFile.NewProjectSource(const ProjectName: string): IOTAFile;
+begin
+  Result := TSourceFile.Create(sISAPIProject, [ProjectName]);
+end;
 
 end.

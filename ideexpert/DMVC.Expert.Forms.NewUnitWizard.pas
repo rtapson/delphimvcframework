@@ -54,12 +54,14 @@ type
     chkCreateIndexMethod: TCheckBox;
     chkCreateActionFiltersMethods: TCheckBox;
     chkCreateCRUDMethods: TCheckBox;
+    chkUseSpring4DDI: TCheckBox;
     procedure FormCreate(Sender: TObject);
   private
     function GetCreateIndexMethod: boolean;
     function GetControllerClassName: string;
     function GetCreateActionFiltersMethods: boolean;
     function GetCreateCRUDMethods: boolean;
+    function GetSpring4dDI: Boolean;
     { Private declarations }
   public
     { Public declarations }
@@ -67,6 +69,7 @@ type
     property CreateIndexMethod: boolean read GetCreateIndexMethod;
     property CreateCRUDMethods: boolean read GetCreateCRUDMethods;
     property CreateActionFiltersMethods: boolean read GetCreateActionFiltersMethods;
+    property UseSpring4DDI: Boolean read GetSpring4dDI;
 
   end;
 
@@ -98,6 +101,11 @@ end;
 function TfrmDMVCNewUnit.GetCreateIndexMethod: boolean;
 begin
   Result := chkCreateIndexMethod.Checked;
+end;
+
+function TfrmDMVCNewUnit.GetSpring4dDI: Boolean;
+begin
+  Result := chkUseSpring4DDI.Checked;
 end;
 
 function TfrmDMVCNewUnit.GetControllerClassName: string;

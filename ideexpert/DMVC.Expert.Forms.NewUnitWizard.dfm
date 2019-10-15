@@ -80,6 +80,14 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
       State = cbChecked
       TabOrder = 2
     end
+    object chkUseSpring4DDI: TCheckBox
+      Left = 16
+      Top = 101
+      Width = 97
+      Height = 17
+      Caption = 'Use Spring4D DI'
+      TabOrder = 4
+    end
   end
   object btnOK: TButton
     Left = 107

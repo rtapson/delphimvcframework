@@ -2,7 +2,7 @@
 {                                                                           }
 {                      Delphi MVC Framework                                 }
 {                                                                           }
-{     Copyright (c) 2010-2017 Daniele Teti and the DMVCFramework Team       }
+{     Copyright (c) 2010-2018 Daniele Teti and the DMVCFramework Team       }
 {                                                                           }
 {           https://github.com/danieleteti/delphimvcframework               }
 {                                                                           }
@@ -27,63 +27,41 @@
 {                                                                           }
 {            https://github.com/VSoftTechnologies/DUnitX                    }
 {***************************************************************************}
-
-unit DMVC.Expert.CodeGen.NewDMVCProject;
-
+unit DMVC.Expert.CodeGen.NewSpring4DDIService;
+// This is done to Warnings that I can't control, as Embarcadero has
+// deprecated the functions, but due to design you are still required to
+// to implement.
+{$WARN SYMBOL_DEPRECATED OFF}
 interface
 
 uses
   ToolsAPI,
-  DMVC.Expert.CodeGen.NewProject;
+  DMVC.Expert.CodeGen.NewUnit;
 
 type
-  TDMVCProjectFile = class(TNewProjectEx)
+  TNewSpring4DDIService = class(TNewUnit)
   private
-    FDefaultPort: Integer;
-    procedure SetDefaultPort(const Value: Integer);
+    FControllerClassName: string;
+    FControllerUnitName: string;
   protected
-    function NewProjectSource(const ProjectName: string): IOTAFile; override;
-    function GetFrameworkType: string; override;
+    function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile; override;
   public
-    constructor Create; overload;
-    constructor Create(const APersonality: string); overload;
-    property DefaultPort: Integer read FDefaultPort write SetDefaultPort;
+    constructor Create(const AControllerUnitName: string; const AControllerClassName: string; const APersonality: string = '');
   end;
 
 implementation
 
-uses
-  DMVC.Expert.CodeGen.SourceFile,
-  DMVC.Expert.CodeGen.Templates,
-  System.SysUtils;
+{ TNewSpring4DDIService }
 
-constructor TDMVCProjectFile.Create;
+constructor TNewSpring4DDIService.Create(const AControllerUnitName, AControllerClassName, APersonality: string);
 begin
-  // TODO: Figure out how to make this be DMVCProjectX where X is the next available.
-  // Return Blank and the project will be 'ProjectX.dpr' where X is the next available number
-  FFileName := '';
-  FDefaultPort := 0;
+
 end;
 
-constructor TDMVCProjectFile.Create(const APersonality: string);
+function TNewSpring4DDIService.NewImplSource(const ModuleIdent, FormIdent,
+  AncestorIdent: string): IOTAFile;
 begin
-  Create;
-  Personality := APersonality;
-end;
 
-function TDMVCProjectFile.GetFrameworkType: string;
-begin
-  Result := 'VCL';
-end;
-
-function TDMVCProjectFile.NewProjectSource(const ProjectName: string): IOTAFile;
-begin
-  Result := TSourceFile.Create(sDMVCDPR, [ProjectName, FDefaultPort]);
-end;
-
-procedure TDMVCProjectFile.SetDefaultPort(const Value: Integer);
-begin
-  FDefaultPort := Value;
 end;
 
 end.

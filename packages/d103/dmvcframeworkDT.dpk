@@ -42,7 +42,7 @@ requires
 
 contains
   DMVC.Expert.CodeGen.NewControllerUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.NewControllerUnit.pas',
-  DMVC.Expert.CodeGen.NewDMVCProject in '..\..\ideexpert\DMVC.Expert.CodeGen.NewDMVCProject.pas',
+  DMVC.Expert.CodeGen.NewDMVCStandaloneProject in '..\..\ideexpert\DMVC.Expert.CodeGen.NewDMVCStandaloneProject.pas',
   DMVC.Expert.CodeGen.NewProject in '..\..\ideexpert\DMVC.Expert.CodeGen.NewProject.pas',
   DMVC.Expert.CodeGen.NewUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.NewUnit.pas',
   DMVC.Expert.CodeGen.NewWebModuleUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.NewWebModuleUnit.pas',
@@ -53,6 +53,16 @@ contains
   DMVC.Expert.NewUnitWizardEx in '..\..\ideexpert\DMVC.Expert.NewUnitWizardEx.pas',
   DMVC.Expert.ProjectWizardEx in '..\..\ideexpert\DMVC.Expert.ProjectWizardEx.pas',
   DMVC.Expert.Registration in '..\..\ideexpert\DMVC.Expert.Registration.pas',
-  DMVC.Splash.Registration in '..\..\ideexpert\DMVC.Splash.Registration.pas';
+  DMVC.Splash.Registration in '..\..\ideexpert\DMVC.Splash.Registration.pas',
+  DMVC.Expert.CodeGen.NewSpring4DDIConfigurationUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.NewSpring4DDIConfigurationUnit.pas',
+  DMVC.Expert.CodeGen.NewSpring4DDIService in '..\..\ideexpert\DMVC.Expert.CodeGen.NewSpring4DDIService.pas',
+  DMVC.Expert.Consts in '..\..\ideexpert\DMVC.Expert.Consts.pas',
+  DMVC.Expert.CodeGen.NewDMVCISAPIProject in '..\..\ideexpert\DMVC.Expert.CodeGen.NewDMVCISAPIProject.pas',
+  DMVC.Expert.CodeGen.NewDMVCWindowsServiceProject in '..\..\ideexpert\DMVC.Expert.CodeGen.NewDMVCWindowsServiceProject.pas',
+  DMVC.Expert.BaseProjectOption in '..\..\ideexpert\ProjectOptions\DMVC.Expert.BaseProjectOption.pas',
+  DMVC.Expert.Spring4DDIProjectOption in '..\..\ideexpert\ProjectOptions\DMVC.Expert.Spring4DDIProjectOption.pas',
+  DMVC.Expert.AnalyticsSupportProjectOption in '..\..\ideexpert\ProjectOptions\DMVC.Expert.AnalyticsSupportProjectOption.pas',
+  DMVC.Expert.AureliusSupportProjectOption in '..\..\ideexpert\ProjectOptions\DMVC.Expert.AureliusSupportProjectOption.pas',
+  DMVC.Expert.ProjectOptionRegistration in '..\..\ideexpert\ProjectOptions\DMVC.Expert.ProjectOptionRegistration.pas';
 
 end.

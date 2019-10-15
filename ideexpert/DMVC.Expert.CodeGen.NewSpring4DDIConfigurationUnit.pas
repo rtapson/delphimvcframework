@@ -2,7 +2,7 @@
 {                                                                           }
 {                      Delphi MVC Framework                                 }
 {                                                                           }
-{     Copyright (c) 2010-2017 Daniele Teti and the DMVCFramework Team       }
+{     Copyright (c) 2010-2018 Daniele Teti and the DMVCFramework Team       }
 {                                                                           }
 {           https://github.com/danieleteti/delphimvcframework               }
 {                                                                           }
@@ -27,82 +27,64 @@
 {                                                                           }
 {            https://github.com/VSoftTechnologies/DUnitX                    }
 {***************************************************************************}
-
-unit DMVC.Expert.CodeGen.NewWebModuleUnit;
-
+unit DMVC.Expert.CodeGen.NewSpring4DDIConfigurationUnit;
+// This is done to Warnings that I can't control, as Embarcadero has
+// deprecated the functions, but due to design you are still required to
+// to implement.
+{$WARN SYMBOL_DEPRECATED OFF}
 interface
 
 uses
-  ToolsApi,
+  ToolsAPI,
   DMVC.Expert.CodeGen.NewUnit;
 
 type
-  TNewWebModuleUnitEx = class(TNewUnit)
+  TNewSpring4DDIConfigurationUnit = class(TNewUnit)
   private
-    FUnitIdent, FFormName, FFileName : String;
-    FMiddlewares: TArray<String>;
-  protected
-    FWebModuleClassName : string;
     FControllerClassName: string;
-    FControllerUnit: string;
-    FUseSpring4dDI: Boolean;
-    function GetCreatorType: string; override;
-    function NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile; override;
+    FControllerUnitName: string;
+  protected
     function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile; override;
   public
-    constructor Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; aUseSpring4DDI: Boolean);
+    constructor Create(const AControllerUnitName: string; const AControllerClassName: string; const APersonality: string = '');
   end;
 
 implementation
 
 uses
-  Winapi.Windows,
   System.SysUtils,
   VCL.Dialogs,
   DMVC.Expert.CodeGen.Templates,
   DMVC.Expert.CodeGen.SourceFile;
 
-constructor TNewWebModuleUnitEx.Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; aUseSpring4DDI: Boolean);
+{ TNewSpring4DDIConfigurationUnit }
+
+constructor TNewSpring4DDIConfigurationUnit.Create(const AControllerUnitName: string; const AControllerClassName: string; const APersonality: string = '');
 begin
-  Assert(Length(aWebModuleClassName) > 0);
   FAncestorName := '';
   FFormName := '';
   FImplFileName := '';
   FIntfFileName := '';
-  FWebModuleClassName := aWebModuleClassName;
-  FControllerClassName := aControllerClassName;
-  FControllerUnit := aControllerUnit;
-  FMiddlewares := AMiddlewares;
+  FControllerUnitName := AControllerUnitName;
+  FControllerClassName := AControllerClassName;
   Personality := APersonality;
-  FUseSpring4dDI := aUseSpring4DDI;
-  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName( '', FUnitIdent, FFormName, FFileName);
 end;
 
-function TNewWebModuleUnitEx.GetCreatorType: string;
-begin
-  Result := sForm;
-end;
-
-function TNewWebModuleUnitEx.NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile;
-begin
-  Result := TSourceFile.Create(sWebModuleDFM, [FormIdent, FWebModuleClassName]);
-end;
-
-function TNewWebModuleUnitEx.NewImplSource(const ModuleIdent, FormIdent,  AncestorIdent: string): IOTAFile;
+function TNewSpring4DDIConfigurationUnit.NewImplSource(const ModuleIdent,
+  FormIdent, AncestorIdent: string): IOTAFile;
 var
-  lWebModuleUnit: string;
+  lUnitIdent: string;
+  lFormName: string;
+  lFileName: string;
+  lControllerUnit: string;
 begin
-  if FUseSpring4dDI then
-    lWebModuleUnit := sSpring4DWebModule
-  else
-    lWebModuleUnit := sWebModuleUnit;
+  lControllerUnit := sSpring4DDIConfiguration;
+//  lUnitIdent := 'DIConfiguration';
 
-  //ModuleIdent is blank for some reason.
   // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
   // So using method mentioned by Marco Cantu.
-  Result := TSourceFile.Create(lWebModuleUnit, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares]);
+  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('', lUnitIdent, lFormName, lFileName);
+  Result := TSourceFile.Create(lControllerUnit, [lUnitIdent, FControllerUnitName, FControllerClassName]);
 end;
-
-
 
 end.

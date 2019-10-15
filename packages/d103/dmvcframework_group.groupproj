@@ -12,6 +12,9 @@
         <Projects Include="dmvcframeworkDT.dproj">
             <Dependencies/>
         </Projects>
+        <Projects Include="C:\Users\Randy\Documents\Embarcadero\Studio\Projects\DMVCDualStandISAPI\Project2.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -47,14 +50,23 @@
     <Target Name="dmvcframeworkDT:Make">
         <MSBuild Projects="dmvcframeworkDT.dproj" Targets="Make"/>
     </Target>
+    <Target Name="Project2">
+        <MSBuild Projects="C:\Users\Randy\Documents\Embarcadero\Studio\Projects\DMVCDualStandISAPI\Project2.dproj"/>
+    </Target>
+    <Target Name="Project2:Clean">
+        <MSBuild Projects="C:\Users\Randy\Documents\Embarcadero\Studio\Projects\DMVCDualStandISAPI\Project2.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="Project2:Make">
+        <MSBuild Projects="C:\Users\Randy\Documents\Embarcadero\Studio\Projects\DMVCDualStandISAPI\Project2.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="loggerproRT;dmvcframeworkRT;dmvcframeworkDT"/>
+        <CallTarget Targets="loggerproRT;dmvcframeworkRT;dmvcframeworkDT;Project2"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="loggerproRT:Clean;dmvcframeworkRT:Clean;dmvcframeworkDT:Clean"/>
+        <CallTarget Targets="loggerproRT:Clean;dmvcframeworkRT:Clean;dmvcframeworkDT:Clean;Project2:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="loggerproRT:Make;dmvcframeworkRT:Make;dmvcframeworkDT:Make"/>
+        <CallTarget Targets="loggerproRT:Make;dmvcframeworkRT:Make;dmvcframeworkDT:Make;Project2:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>
