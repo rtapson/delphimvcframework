@@ -24,6 +24,8 @@
 
 unit MVCFramework.ActiveRecord;
 
+{$I dmvcframework.inc}
+
 interface
 
 uses
@@ -33,6 +35,9 @@ uses
   FireDAC.DApt,
   Data.DB,
   FireDAC.Comp.Client,
+  FireDAC.Stan.Def,
+  FireDAC.Stan.Pool,
+  FireDAC.Stan.Async,
   FireDAC.Stan.Param,
   System.SysUtils,
   MVCFramework,
@@ -195,7 +200,7 @@ type
     /// <summary>
     /// Called before execute sql
     /// </summary>
-    procedure OnBeforeExecuteSQL(var SQL:String); virtual;
+    procedure OnBeforeExecuteSQL(var SQL: String); virtual;
 
     /// <summary>
     /// Called after insert or update the object to the database
@@ -205,6 +210,9 @@ type
     function GenerateSelectSQL: string;
 
     function SQLGenerator: TMVCSQLGenerator;
+
+    function InternalCount(const RQL: String): int64;
+    function InternalSelectRQL(const RQL: string; const MaxRecordCount: Integer): TMVCActiveRecordList;
   public
     constructor Create(aLazyLoadConnection: Boolean); overload;
     { cannot be virtual! }
@@ -220,11 +228,11 @@ type
     procedure LoadByDataset(const aDataSet: TDataSet; const aOptions: TMVCActiveRecordLoadOptions = []);
     procedure SetPK(const aValue: TValue);
     function GetPK: TValue;
-    class function GetByPK<T: TMVCActiveRecord, constructor>(const aValue: int64): T; overload;
+//    class function GetByPK<T: TMVCActiveRecord, constructor>(const aValue: int64): T; overload;
     class function GetByPK(const aClass: TMVCActiveRecordClass; const aValue: int64): TMVCActiveRecord; overload;
     class function GetScalar(const SQL: string; const Params: array of Variant): Variant;
-    class function Select<T: TMVCActiveRecord, constructor>(const SQL: string; const Params: array of Variant;
-      const Options: TMVCActiveRecordLoadOptions = []): TObjectList<T>; overload;
+//    class function Select<T: TMVCActiveRecord, constructor>(const SQL: string; const Params: array of Variant;
+//      const Options: TMVCActiveRecordLoadOptions = []): TObjectList<T>; overload;
     class function Select(const aClass: TMVCActiveRecordClass; const SQL: string; const Params: array of Variant)
       : TMVCActiveRecordList; overload;
     class function Select(const aClass: TMVCActiveRecordClass; const SQL: string; const Params: array of Variant;
@@ -232,28 +240,47 @@ type
     class function SelectRQL(const aClass: TMVCActiveRecordClass; const RQL: string; const MaxRecordCount: Integer)
       : TMVCActiveRecordList; overload;
     class function DeleteRQL(const aClass: TMVCActiveRecordClass; const RQL: string): int64;
+//    class function SelectRQL<T: constructor, TMVCActiveRecord>(const RQL: string; const MaxRecordCount: Integer)
+//      : TObjectList<T>; overload;
+    function SelectRQL(const RQL: string; const MaxRecordCount: Integer): TMVCActiveRecordList; overload;
+//    class function Where<T: TMVCActiveRecord, constructor>(const SQLWhere: string; const Params: array of Variant)
+//      : TObjectList<T>; overload;
+//    class function GetOneByWhere<T: TMVCActiveRecord, constructor>(const SQLWhere: string;
+//      const Params: array of Variant; const RaiseExceptionIfNotFound: Boolean = True): T;
+//    class function GetFirstByWhere<T: TMVCActiveRecord, constructor>(const SQLWhere: string;
+//      const Params: array of Variant; const RaiseExceptionIfNotFound: Boolean = True): T;
+    class function Where(const aClass: TMVCActiveRecordClass; const SQLWhere: string; const Params: array of Variant)
+      : TMVCActiveRecordList; overload;
+    class function Where(const aClass: TMVCActiveRecordClass; const SQLWhere: string; const Params: array of Variant;
+      const Connection: TFDConnection): TMVCActiveRecordList; overload;
+//    class function All<T: TMVCActiveRecord, constructor>: TObjectList<T>; overload;
+    class function All(const aClass: TMVCActiveRecordClass): TObjectList<TMVCActiveRecord>; overload;
+    class function DeleteAll(const aClass: TMVCActiveRecordClass): int64; overload;
+    function Count(const RQL: String = ''): int64; overload;
+//    class function Count<T: TMVCActiveRecord>(const RQL: String = ''): int64; overload;
+//    class function Count<T: TMVCActiveRecord>: int64; overload;
+    class function Count(const aClass: TMVCActiveRecordClass; const RQL: String = ''): int64; overload;
+    class function SelectDataSet(const SQL: string; const Params: array of Variant): TDataSet;
+    class function CurrentConnection: TFDConnection;
+  end;
+
+
+  TMVCActiveRecordHelper = class helper for TMVCActiveRecord
+    class function GetByPK<T: TMVCActiveRecord, constructor>(const aValue: int64): T; overload;
+    class function Select<T: TMVCActiveRecord, constructor>(const SQL: string; const Params: array of Variant;
+      const Options: TMVCActiveRecordLoadOptions = []): TObjectList<T>; overload;
     class function SelectRQL<T: constructor, TMVCActiveRecord>(const RQL: string; const MaxRecordCount: Integer)
       : TObjectList<T>; overload;
-    function SelectRQL(const RQL: string; const MaxRecordCount: Integer): TMVCActiveRecordList; overload;
+    class function All<T: TMVCActiveRecord, constructor>: TObjectList<T>; overload;
+    class function Count<T: TMVCActiveRecord>(const RQL: String = ''): int64; overload;
     class function Where<T: TMVCActiveRecord, constructor>(const SQLWhere: string; const Params: array of Variant)
       : TObjectList<T>; overload;
     class function GetOneByWhere<T: TMVCActiveRecord, constructor>(const SQLWhere: string;
       const Params: array of Variant; const RaiseExceptionIfNotFound: Boolean = True): T;
     class function GetFirstByWhere<T: TMVCActiveRecord, constructor>(const SQLWhere: string;
       const Params: array of Variant; const RaiseExceptionIfNotFound: Boolean = True): T;
-    class function Where(const aClass: TMVCActiveRecordClass; const SQLWhere: string; const Params: array of Variant)
-      : TMVCActiveRecordList; overload;
-    class function Where(const aClass: TMVCActiveRecordClass; const SQLWhere: string; const Params: array of Variant;
-      const Connection: TFDConnection): TMVCActiveRecordList; overload;
-    class function All<T: TMVCActiveRecord, constructor>: TObjectList<T>; overload;
-    class function All(const aClass: TMVCActiveRecordClass): TObjectList<TMVCActiveRecord>; overload;
-    class function DeleteAll(const aClass: TMVCActiveRecordClass): int64; overload;
-    function Count: int64; overload;
-    class function Count<T: TMVCActiveRecord>: int64; overload;
-    class function Count(const aClass: TMVCActiveRecordClass): int64; overload;
-    class function SelectDataSet(const SQL: string; const Params: array of Variant): TDataSet;
-    class function CurrentConnection: TFDConnection;
   end;
+
 
   IMVCEntitiesRegistry = interface
     ['{BB227BEB-A74A-4637-8897-B13BA938C07B}']
@@ -284,7 +311,9 @@ type
   IMVCActiveRecordConnections = interface
     ['{7B87473C-1784-489F-A838-925E7DDD0DE2}']
     procedure AddConnection(const aName: string; const aConnection: TFDConnection; const Owns: Boolean = false);
+    procedure AddDefaultConnection(const aConnection: TFDConnection; const Owns: Boolean = false);
     procedure RemoveConnection(const aName: string);
+    procedure RemoveDefaultConnection;
     procedure SetCurrent(const aName: string);
     function GetCurrent: TFDConnection;
     function GetCurrentBackend: string;
@@ -308,7 +337,9 @@ type
     constructor Create; virtual;
     destructor Destroy; override;
     procedure AddConnection(const aName: string; const aConnection: TFDConnection; const aOwns: Boolean = false);
+    procedure AddDefaultConnection(const aConnection: TFDConnection; const aOwns: Boolean = false);
     procedure RemoveConnection(const aName: string);
+    procedure RemoveDefaultConnection;
     procedure SetCurrent(const aName: string);
     function GetCurrent: TFDConnection;
     function GetByName(const aName: string): TFDConnection;
@@ -394,7 +425,7 @@ var
 
 function GetBackEndByConnection(aConnection: TFDConnection): string;
 begin
-  case aConnection.RDBMSKind of
+  case Ord(aConnection.RDBMSKind) of
     0:
       Exit('unknown');
     1:
@@ -481,6 +512,12 @@ begin
   end;
 end;
 
+procedure TMVCConnectionsRepository.AddDefaultConnection(
+  const aConnection: TFDConnection; const aOwns: Boolean);
+begin
+  AddConnection('default', aConnection, aOwns);
+end;
+
 constructor TMVCConnectionsRepository.Create;
 begin
   inherited;
@@ -502,6 +539,9 @@ var
   lKeyName: string;
   lConnHolder: TConnHolder;
 begin
+{$IF not Defined(SeattleOrBetter)}
+  Result := nil;
+{$ENDIF}
   lKeyName := GetKeyName(aName.ToLower);
   fMREW.BeginRead;
   try
@@ -517,9 +557,12 @@ function TMVCConnectionsRepository.GetCurrent: TFDConnection;
 var
   lName: string;
 begin
+{$IF not Defined(SeattleOrBetter)}
+  Result := nil;
+{$ENDIF}
   fMREW.BeginRead;
   try
-    if fCurrentConnectionsByThread.TryGetValue(TThread.Current.ThreadID, lName) then
+    if fCurrentConnectionsByThread.TryGetValue(TThread.CurrentThread.ThreadID, lName) then
     begin
       Result := GetByName(lName);
     end
@@ -539,7 +582,7 @@ end;
 
 function TMVCConnectionsRepository.GetKeyName(const aName: string): string;
 begin
-  Result := Format('%10.10d::%s', [TThread.Current.ThreadID, aName]);
+  Result := Format('%10.10d::%s', [TThread.CurrentThread.ThreadID, aName]);
 end;
 
 procedure TMVCConnectionsRepository.RemoveConnection(const aName: string);
@@ -570,6 +613,11 @@ begin
   end;
 end;
 
+procedure TMVCConnectionsRepository.RemoveDefaultConnection;
+begin
+  RemoveConnection('default');
+end;
+
 procedure TMVCConnectionsRepository.SetCurrent(const aName: string);
 var
   lName: string;
@@ -582,7 +630,7 @@ begin
   try
     if not fConnectionsDict.ContainsKey(lKeyName) then
       raise Exception.CreateFmt('Unknown connection %s', [aName]);
-    fCurrentConnectionsByThread.AddOrSetValue(TThread.Current.ThreadID, lName);
+    fCurrentConnectionsByThread.AddOrSetValue(TThread.CurrentThread.ThreadID, lName);
   finally
     fMREW.EndWrite;
   end;
@@ -638,7 +686,7 @@ var
   lPar: TFDParam;
   lPair: TPair<TRttiField, string>;
   lValue: TValue;
-  lSQL : String;
+  lSQL: String;
 begin
   lQry := TFDQuery.Create(nil);
   try
@@ -725,7 +773,7 @@ var
 begin
   lQry := TFDQuery.Create(nil);
   try
-    lQry.FetchOptions.Unidirectional := False; //True;
+    lQry.FetchOptions.Unidirectional := false; // True;
     if Connection = nil then
     begin
       lQry.Connection := ActiveRecordConnectionsRegistry.GetCurrent;
@@ -827,6 +875,28 @@ begin
   OnAfterInsertOrUpdate;
 end;
 
+function TMVCActiveRecord.InternalCount(const RQL: String): int64;
+var
+  lSQL: string;
+begin
+  lSQL := Self.SQLGenerator.CreateSelectCount(fTableName);
+  if not RQL.IsEmpty then
+  begin
+    lSQL := lSQL + fSQLGenerator.CreateSQLWhereByRQL(RQL, GetMapping, false);
+  end;
+  Result := GetScalar(lSQL, []);
+end;
+
+function TMVCActiveRecord.InternalSelectRQL(const RQL: string;
+  const MaxRecordCount: Integer): TMVCActiveRecordList;
+var
+  lSQL: string;
+begin
+  lSQL := SQLGenerator.CreateSQLWhereByRQL(RQL, GetMapping);
+  LogD(Format('RQL [%s] => SQL [%s]', [RQL, lSQL]));
+  Result := Where(TMVCActiveRecordClass(Self.ClassType), lSQL, []);
+end;
+
 constructor TMVCActiveRecord.Create(aLazyLoadConnection: Boolean);
 begin
   inherited Create;
@@ -866,7 +936,7 @@ begin
   end;
 end;
 
-class function TMVCActiveRecord.GetByPK<T>(const aValue: int64): T;
+class function TMVCActiveRecordHelper.GetByPK<T>(const aValue: int64): T;
 var
   lActiveRecord: TMVCActiveRecord;
 begin
@@ -879,7 +949,7 @@ begin
   end;
 end;
 
-class function TMVCActiveRecord.GetFirstByWhere<T>(const SQLWhere: string; const Params: array of Variant;
+class function TMVCActiveRecordHelper.GetFirstByWhere<T>(const SQLWhere: string; const Params: array of Variant;
   const RaiseExceptionIfNotFound: Boolean): T;
 var
   lList: TObjectList<T>;
@@ -929,7 +999,7 @@ begin
   Result := fMapping;
 end;
 
-class function TMVCActiveRecord.GetOneByWhere<T>(const SQLWhere: string; const Params: array of Variant;
+class function TMVCActiveRecordHelper.GetOneByWhere<T>(const SQLWhere: string; const Params: array of Variant;
   const RaiseExceptionIfNotFound: Boolean): T;
 begin
   Result := GetFirstByWhere<T>(SQLWhere, Params, false);
@@ -959,26 +1029,28 @@ begin
     raise EMVCActiveRecord.CreateFmt('Action not allowed on "%s"', [ClassName]);
 end;
 
-class function TMVCActiveRecord.Count(const aClass: TMVCActiveRecordClass): int64;
+class function TMVCActiveRecord.Count(const aClass: TMVCActiveRecordClass; const RQL: String): int64;
 var
   lAR: TMVCActiveRecord;
 begin
   lAR := aClass.Create;
   try
-    Result := lAR.Count;
+    //Up to 10.1 BErlin, here the compiler try to call the Count<T> introduced by the class helper
+    //Instead of the Count() which exists in "TMVCActiveRecord"
+    Result := lAR.InternalCount(RQL);
   finally
     lAR.Free;
   end;
 end;
 
-function TMVCActiveRecord.Count: int64;
+function TMVCActiveRecord.Count(const RQL: String = ''): Int64;
 begin
-  Result := GetScalar(Self.SQLGenerator.CreateSelectCount(fTableName), []);
+  Result := InternalCount(RQL);
 end;
 
-class function TMVCActiveRecord.Count<T>: int64;
+class function TMVCActiveRecordHelper.Count<T>(const RQL: String = ''): int64;
 begin
-  Result := Count(TMVCActiveRecordClass(T));
+  Result := TMVCActiveRecord.Count(TMVCActiveRecordClass(T), RQL);
 end;
 
 class function TMVCActiveRecord.CurrentConnection: TFDConnection;
@@ -1083,7 +1155,7 @@ begin
       end;
     ftMemo, ftWideMemo:
       begin
-        if aRTTIField.FieldType.TypeKind in [tkString, tkUString, tkWideString] then
+        if aRTTIField.FieldType.TypeKind in [tkString, tkUString {, tkWideString}] then
         begin
           // In case you want to map a "TEXT" blob into a Delphi String
           lSStream := TStringStream.Create('', TEncoding.Unicode);
@@ -1126,10 +1198,12 @@ begin
         TBlobField(aField).SaveToStream(lInternalStream);
         lInternalStream.Position := 0;
       end;
+{$IF Defined(SeattleOrBetter)}
     ftGuid:
       begin
         aRTTIField.SetValue(Self, TValue.From<TGUID>(aField.AsGuid));
       end;
+{$ENDIF}
   else
     raise EMVCActiveRecord.CreateFmt('Unsupported FieldType (%d) for field %s', [Ord(aField.DataType), aFieldName]);
   end;
@@ -1141,11 +1215,11 @@ var
   lStream: TStream;
   lName: String;
 begin
-  {$IFDEF NEXTGEN}
-    lName := aValue.TypeInfo.NameFld.ToString;
-  {$ELSE}
-    lName := String(aValue.TypeInfo.Name);
-  {$ENDIF}
+{$IFDEF NEXTGEN}
+  lName := aValue.TypeInfo.NameFld.ToString;
+{$ELSE}
+  lName := String(aValue.TypeInfo.Name);
+{$ENDIF}
   case aValue.TypeInfo.Kind of
     // tkUnknown:
     // begin
@@ -1175,10 +1249,12 @@ begin
       begin
         aParam.AsString := aValue.AsString;
       end;
+{$IF Defined(SeattleOrBetter)}
     tkWideString:
       begin
         aParam.AsWideString := aValue.AsString;
       end;
+{$ENDIF}
     tkInt64:
       begin
         aParam.AsLargeInt := aValue.AsInt64;
@@ -1200,29 +1276,35 @@ begin
       end;
     tkFloat:
       begin
-        if lName = 'TDate'  then
+        if lName = 'TDate' then
         begin
           aParam.AsDate := Trunc(aValue.AsExtended);
         end
-        else if lName = 'TDateTime'  then
-        begin
-          aParam.AsDateTime := aValue.AsExtended;
-        end
-        else if lName = 'Currency'  then
-        begin
-          aParam.AsCurrency := aValue.AsCurrency;
-        end
         else
-        begin
-          aParam.AsFloat := aValue.AsExtended;
-        end;
+          if lName = 'TDateTime' then
+          begin
+            aParam.AsDateTime := aValue.AsExtended;
+          end
+          else
+            if lName = 'Currency' then
+            begin
+              aParam.AsCurrency := aValue.AsCurrency;
+            end
+            else
+            begin
+              aParam.AsFloat := aValue.AsExtended;
+            end;
       end;
     tkClass:
       begin
         if not aValue.IsInstanceOf(TStream) then
           raise EMVCActiveRecord.CreateFmt('Unsupported reference type for param %s: %s',
             [aParam.Name, aValue.AsObject.ClassName]);
+        {$IF Defined(SeattleOrBetter)}
         lStream := aValue.AsType<TStream>(false);
+        {$ELSE}
+        lStream := aValue.AsType<TStream>();
+        {$ENDIF}
         if Assigned(lStream) then
         begin
           lStream.Position := 0;
@@ -1449,7 +1531,7 @@ begin
   // do nothing
 end;
 
-procedure TMVCActiveRecord.OnBeforeExecuteSQL(var SQL:String);
+procedure TMVCActiveRecord.OnBeforeExecuteSQL(var SQL: String);
 begin
   // do nothing
 end;
@@ -1514,7 +1596,7 @@ begin
 
 end;
 
-class function TMVCActiveRecord.Select<T>(const SQL: string; const Params: array of Variant;
+class function TMVCActiveRecordHelper.Select<T>(const SQL: string; const Params: array of Variant;
   const Options: TMVCActiveRecordLoadOptions): TObjectList<T>;
 var
   lDataSet: TDataSet;
@@ -1546,15 +1628,11 @@ begin
 end;
 
 function TMVCActiveRecord.SelectRQL(const RQL: string; const MaxRecordCount: Integer): TMVCActiveRecordList;
-var
-  lSQL: string;
 begin
-  lSQL := SQLGenerator.CreateSQLWhereByRQL(RQL, GetMapping);
-  LogD(Format('RQL [%s] => SQL [%s]', [RQL, lSQL]));
-  Result := Where(TMVCActiveRecordClass(Self.ClassType), lSQL, []);
+  Result := InternalSelectRQL(RQL, MaxRecordCount);
 end;
 
-class function TMVCActiveRecord.SelectRQL<T>(const RQL: string; const MaxRecordCount: Integer): TObjectList<T>;
+class function TMVCActiveRecordHelper.SelectRQL<T>(const RQL: string; const MaxRecordCount: Integer): TObjectList<T>;
 var
   lAR: TMVCActiveRecord;
   lSQL: string;
@@ -1578,7 +1656,7 @@ var
 begin
   lAR := aClass.Create(True);
   try
-    Result := lAR.SelectRQL(RQL, MaxRecordCount);
+    Result := lAR.InternalSelectRQL(RQL, MaxRecordCount);
   finally
     lAR.Free;
   end;
@@ -1641,7 +1719,7 @@ begin
   end;
 end;
 
-class function TMVCActiveRecord.All<T>: TObjectList<T>;
+class function TMVCActiveRecordHelper.All<T>: TObjectList<T>;
 var
   lAR: TMVCActiveRecord;
 begin
@@ -1672,7 +1750,7 @@ begin
   end;
 end;
 
-class function TMVCActiveRecord.Where<T>(const SQLWhere: string; const Params: array of Variant): TObjectList<T>;
+class function TMVCActiveRecordHelper.Where<T>(const SQLWhere: string; const Params: array of Variant): TObjectList<T>;
 var
   lAR: TMVCActiveRecord;
 begin
@@ -1859,7 +1937,7 @@ function TMVCSQLGenerator.GetRQLParser: TRQL2SQL;
 begin
   if fRQL2SQL = nil then
   begin
-    fRQL2SQL := TRQL2SQL.Create;//(20);
+    fRQL2SQL := TRQL2SQL.Create; // (20);
   end;
   Result := fRQL2SQL;
 end;
@@ -1886,8 +1964,8 @@ destructor TMVCConnectionsRepository.TConnHolder.Destroy;
 begin
   if OwnsConnection then
   Begin
-    if Connection.connected then
-       Connection.connected := False;
+    if Connection.Connected then
+      Connection.Connected := false;
     FreeAndNil(Connection);
   End;
   inherited;

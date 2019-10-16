@@ -132,6 +132,11 @@ type
     [MVCProduces('application/json')]
     procedure TestPOSTObject;
 
+    [MVCPath('/customerecho')]
+    [MVCHTTPMethod([httpPOST])]
+    [MVCProduces('application/json')]
+    procedure TestCustomerEcho;
+
     [MVCPath('/speed')]
     [MVCHTTPMethod([httpGET])]
     procedure TestHelloWorld;
@@ -191,6 +196,19 @@ type
     [MVCHTTPMethod([httpGET])]
     procedure TestGetImagePng;
 
+    // Response Objects Tests
+    [MVCHTTPMethod([httpPOST])]
+    [MVCPath('/responses/created')]
+    procedure TestResponseCreated;
+
+    [MVCHTTPMethod([httpPOST])]
+    [MVCPath('/responses/accepted')]
+    procedure TestResponseAccepted;
+
+    [MVCHTTPMethod([httpGET])]
+    [MVCPath('/responses/nocontent')]
+    procedure TestResponseNoContent;
+
   end;
 
   [MVCPath('/private')]
@@ -224,6 +242,7 @@ type
 implementation
 
 uses
+  JsonDataObjects,
   System.JSON,
   Web.HTTPApp,
   BusinessObjectsU,
@@ -373,16 +392,32 @@ begin
   Render(Context.Request.Body);
 end;
 
+procedure TTestServerController.TestCustomerEcho;
+var
+  lCustomer: TCustomer;
+begin
+  lCustomer := Context.Request.BodyAs<TCustomer>();
+  // lCustomer.Logo.SaveToFile('pippo_server_before.bmp');
+  lCustomer.Name := lCustomer.Name + ' changed';
+  lCustomer.Logo.Canvas.TextOut(10, 10, 'Changed');
+  // lCustomer.Logo.SaveToFile('pippo_server_after.bmp');
+  Render(lCustomer, True);
+end;
+
 procedure TTestServerController.TestCharset;
 var
-  Obj: TJSONObject;
+  Obj: TJDOJSONObject;
 begin
   ContentType := BuildContentType(TMVCMediaType.APPLICATION_JSON, TMVCCharset.UTF_8);
-  Obj := TJSONObject.Create;
-  Obj.AddPair('name1', 'jørn');
-  Obj.AddPair('name2', 'Što je Unicode?');
-  Obj.AddPair('name3', 'àèéìòù');
-  Render(Obj);
+  Obj := TJDOJSONObject.Create;
+  try
+    Obj.s['name1'] := 'jørn';
+    Obj.s['name2'] := 'Što je Unicode?';
+    Obj.s['name3'] := 'àèéìòù';
+    Render(Obj, false);
+  finally
+    Obj.Free;
+  end;
 end;
 
 procedure TTestServerController.TestGetImagePng;
@@ -441,10 +476,16 @@ end;
 procedure TTestServerController.TestGetPersonsHateos;
 begin
   Render<TPerson>(TPerson.GetList, True,
-    procedure(const Person: TPerson; const Links: TMVCStringDictionary)
+    procedure(const Person: TPerson; const Links: IMVCLinks)
     begin
-      Links['x-ref-firstname'] := '/api/people/' + Person.FirstName;
-      Links['x-ref-lastname'] := '/api/people/' + Person.LastName;
+      Links.AddRefLink
+        .Add(HATEOAS.HREF, '/api/people/' + Person.ID.ToString)
+        .Add(HATEOAS.REL, 'test0')
+        .Add(HATEOAS._TYPE, 'application/json');
+      Links.AddRefLink
+        .Add(HATEOAS.HREF, '/api/test/' + Person.ID.ToString)
+        .Add(HATEOAS.REL, 'test1')
+        .Add(HATEOAS._TYPE, 'application/json')
     end);
 end;
 
@@ -477,17 +518,17 @@ end;
 
 procedure TTestServerController.TestJSONArrayAsObjectList;
 var
-  vUsers: TObjectList<TCustomer>;
+  lUsers: TObjectList<TCustomer>;
 begin
-  vUsers := Context.Request.BodyAsListOf<TCustomer>();
+  lUsers := Context.Request.BodyAsListOf<TCustomer>();
   try
-    vUsers.OwnsObjects := True;
-    if (vUsers.Count = 3000) then
+    lUsers.OwnsObjects := True;
+    if (lUsers.Count = 3000) then
       Render('Success!')
     else
       Render('Error!');
   finally
-    FreeAndNil(vUsers);
+    FreeAndNil(lUsers);
   end;
 end;
 
@@ -523,6 +564,21 @@ var
 begin
   LStream := TMemoryStream.Create;
   Render(LStream, True);
+end;
+
+procedure TTestServerController.TestResponseAccepted;
+begin
+  ResponseAccepted('http://pippo.it/1234','1234','thisisthereason');
+end;
+
+procedure TTestServerController.TestResponseCreated;
+begin
+  ResponseCreated('thisisthelocation','thisisthereason');
+end;
+
+procedure TTestServerController.TestResponseNoContent;
+begin
+  ResponseNoContent('thisisthereason');
 end;
 
 procedure TTestServerController.TestStringDictionary;

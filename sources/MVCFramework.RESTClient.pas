@@ -60,6 +60,7 @@ type
     Fclassname: string;
     FMessage: string;
     FHttp_error: Integer;
+    FErrorNumber: Integer;
   public
     [MVCNameAs('reasonstring')]
     property Status: string read FStatus write FStatus;
@@ -69,6 +70,8 @@ type
     property ExceptionMessage: string read FMessage write FMessage;
     [MVCNameAs('statuscode')]
     property HTTPError: Integer read FHttp_error write FHttp_error;
+    [MVCNameAs('errornumber')]
+    property ErrorNumber: Integer read FErrorNumber write FErrorNumber;
   end;
 
   IRESTResponse = interface
@@ -747,6 +750,7 @@ begin
   FHTTP.HandleRedirects := False; // DT 2016/09/16
   FHTTP.OnRedirect := OnHTTPRedirect; // DT 2016/09/16
   FHTTP.ReadTimeOut := 20000;
+  FHTTP.Request.UserAgent := 'Mozilla/3.0 (compatible; IndyLibrary)';  // Resolve 403 Forbidden error in REST API SSL
 
   if (AIOHandler <> nil) then
     FHTTP.IOHandler := AIOHandler
@@ -757,7 +761,7 @@ begin
 
   FHTTP.HandleRedirects := True;
   FHTTP.Request.CustomHeaders.FoldLines := False;
-  FHTTP.Request.BasicAuthentication := True;
+  FHTTP.Request.BasicAuthentication := False; //DT 2018/07/24
 
   FSerializer := GetDefaultSerializer;
 end;
@@ -1302,6 +1306,8 @@ var
   lDecomp: TZDecompressionStream;
   lCompressionType: TMVCCompressionType;
 begin
+  FHTTP.Request.BasicAuthentication := not Username.IsEmpty; //DT 2019/08/23
+
   FContentEncoding := '';
   Result := TRESTResponse.Create;
 
@@ -1390,7 +1396,11 @@ begin
   lTmp := TMemoryStream.Create;
   try
     Result.Body.Position := 0;
+    {$IF Defined(SeattleOrBetter)}
     lDecomp := TZDecompressionStream.Create(Result.Body, MVC_COMPRESSION_ZLIB_WINDOW_BITS[lCompressionType], False);
+    {$ELSE}
+    lDecomp := TZDecompressionStream.Create(Result.Body, MVC_COMPRESSION_ZLIB_WINDOW_BITS[lCompressionType]);
+    {$ENDIF}
     try
       lTmp.CopyFrom(lDecomp, 0);
       Result.Body.Size := 0;

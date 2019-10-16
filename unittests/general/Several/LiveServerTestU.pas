@@ -29,7 +29,9 @@ interface
 uses
   DUnitX.TestFramework,
   MVCFramework.RESTClient,
-  MVCFramework.JSONRPC.Client, System.DateUtils;
+  MVCFramework.JSONRPC.Client,
+  System.DateUtils,
+  System.Hash;
 
 const
 
@@ -40,6 +42,7 @@ const
   TEST_SERVER_ADDRESS = '127.0.0.1';
 
 {$ENDIF}
+
 
 type
 
@@ -59,6 +62,8 @@ type
 
   [TestFixture]
   TServerTest = class(TBaseServerTest)
+  private
+
   public
     [Test]
     [TestCase('request url /fault', '/fault')]
@@ -83,6 +88,10 @@ type
     procedure TestPOSTWithParamsAndJSONBody;
     [Test]
     procedure TestPOSTWithObjectJSONBody;
+    [Test]
+    procedure TestCustomerEcho;
+    [Test]
+    procedure TestXHTTPMethodOverride_POST_as_PUT;
     [Test]
     procedure TestPUTWithParamsAndJSONBody;
     [Test]
@@ -180,6 +189,14 @@ type
     procedure TestStringDictionary;
     [Test]
     procedure TestWrongJSONBody;
+
+    // test responses objects
+    [Test]
+    procedure TestResponseCreated;
+    [Test]
+    procedure TestResponseNoContent;
+    [Test]
+    procedure TestResponseAccepted;
   end;
 
   [TestFixture]
@@ -224,7 +241,15 @@ uses
   System.Classes,
   MVCFramework.SystemJSONUtils,
   IdCookie,
-  MVCFramework.JSONRPC;
+  MVCFramework.JSONRPC,
+  MVCFramework.Serializer.Intf
+{$IFDEF MSWINDOWS}
+    ,
+  MVCFramework.Serializer.JsonDataObjects.OptionalCustomTypes
+    ,
+  Vcl.Graphics
+{$ENDIF}
+    ;
 
 { TServerTest }
 
@@ -616,6 +641,47 @@ begin
   end;
 end;
 
+procedure TServerTest.TestCustomerEcho;
+var
+  r: IRESTResponse;
+  lCustomer: TCustomer;
+  lSer: IMVCSerializer;
+begin
+  lCustomer := TCustomer.Create;
+  try
+    lCustomer.Name := 'bit Time Professionals';
+    lCustomer.ContactFirst := 'Daniele'; // transient
+    lCustomer.ContactLast := 'Teti'; // transient
+    lCustomer.AddressLine1 := 'Via Roma 10';
+    lCustomer.AddressLine2 := '00100, ROMA';
+    lCustomer.Logo.SetSize(100, 100);
+    lCustomer.Logo.Canvas.FillRect(Rect(0, 0, 100, 100));
+    lCustomer.Logo.Canvas.Font.Color := clRed;
+    lCustomer.Logo.Canvas.TextOut(10, 50, 'From Client');
+    lCustomer.Logo.SaveToFile('pippo_client_before_send.bmp');
+    lSer := GetDefaultSerializer;
+    RegisterOptionalCustomTypesSerializers(lSer);
+    r := RESTClient.Accept(TMVCMediaType.APPLICATION_JSON).doPOST('/customerecho', [],
+      lSer.SerializeObject(lCustomer));
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TCustomer.Create;
+  try
+    lSer := GetDefaultSerializer;
+    RegisterOptionalCustomTypesSerializers(lSer);
+    lSer.DeserializeObject(r.BodyAsString, lCustomer);
+    Assert.areEqual('bit Time Professionals changed', lCustomer.Name);
+    Assert.areEqual('', lCustomer.ContactFirst);
+    Assert.areEqual('', lCustomer.ContactLast);
+    lCustomer.Logo.SaveToFile('customer_logo.bmp');
+    Assert.areEqual('de2a29ec62fc1f0b3abbb6b74223d214', THashMD5.GetHashStringFromFile('customer_logo.bmp'));
+  finally
+    lCustomer.Free;
+  end;
+end;
+
 procedure TServerTest.TestCustomAuthLoginLogout;
 var
   lRes: IRESTResponse;
@@ -698,9 +764,9 @@ begin
   try
     for I := 0 to lJArr.Count - 1 do
     begin
-      Assert.isFalse(lJArr[I].O[TMVCConstants.HATEOS_PROP_NAME].IsNull, '_links doesn''t exists');
-      Assert.isFalse(lJArr[I].O[TMVCConstants.HATEOS_PROP_NAME]['x-ref-lastname'].IsNull, '_links.x-ref-lastname doesn''t exists');
-      Assert.isFalse(lJArr[I].O[TMVCConstants.HATEOS_PROP_NAME]['x-ref-firstname'].IsNull, '_links.x-ref-firstname doesn''t exists');
+      Assert.isTrue(lJArr[I].A[TMVCConstants.HATEOAS_PROP_NAME].Count = 2, '_links doesn''t exists');
+      Assert.areEqual(lJArr[I].A[TMVCConstants.HATEOAS_PROP_NAME].O[0].s[HATEOAS.REL], 'test0');
+      Assert.areEqual(lJArr[I].A[TMVCConstants.HATEOAS_PROP_NAME].O[1].s[HATEOAS.REL], 'test1');
     end;
   finally
     lJArr.Free;
@@ -877,12 +943,13 @@ procedure TServerTest.TestPostAListOfObjects;
 var
   lRes: IRESTResponse;
   LCustomers: TObjectList<TCustomer>;
+  lSer: IMVCSerializer;
 begin
   LCustomers := TCustomer.GetList;
   try
-    lRes := RESTClient.doPOST('/customers/list', [], GetDefaultSerializer.SerializeCollection(LCustomers)
-    { Mapper.ObjectListToJSONArray<TCustomer>(LCustomers) }
-      );
+    lSer := GetDefaultSerializer;
+    RegisterOptionalCustomTypesSerializers(lSer); // TBitmap
+    lRes := RESTClient.doPOST('/customers/list', [], lSer.SerializeCollection(LCustomers));
     Assert.areEqual<Integer>(HTTP_STATUS.OK, lRes.ResponseCode);
   finally
     LCustomers.Free;
@@ -1026,6 +1093,26 @@ begin
   end;
 end;
 
+procedure TServerTest.TestXHTTPMethodOverride_POST_as_PUT;
+var
+  r: IRESTResponse;
+  JSON: System.JSON.TJSONObject;
+begin
+  JSON := System.JSON.TJSONObject.Create;
+  JSON.AddPair('client', 'clientdata');
+  r := RESTClient
+    .Header(TMVCConstants.X_HTTP_Method_Override, 'PUT')
+    .doPOST('/echo', ['1', '2', '3'], TSystemJSON.JSONValueToString(JSON));
+
+  JSON := TSystemJSON.StringAsJSONObject(r.BodyAsString);
+  try
+    Assert.areEqual('clientdata', JSON.Get('client').JsonValue.Value);
+    Assert.areEqual('from server', JSON.Get('echo').JsonValue.Value);
+  finally
+    JSON.Free;
+  end;
+end;
+
 procedure TServerTest.TestReqWithParams;
 var
   ss: TStringStream;
@@ -1083,6 +1170,44 @@ begin
   r := RESTClient.doGET('/req/with/params', [par1, par2, par3]);
   Assert.areEqual<Integer>(HTTP_STATUS.OK, r.ResponseCode,
     Format('URL mapped fails for these characters: "%s","%s","%s"', [par1, par2, par3]));
+end;
+
+procedure TServerTest.TestResponseAccepted;
+var
+  r: IRESTResponse;
+  lJSON: TJDOJsonObject;
+begin
+  r := RESTClient.doPOST('/responses/accepted', []);
+  Assert.areEqual<Integer>(HTTP_STATUS.Accepted, r.ResponseCode);
+  Assert.isTrue(r.ResponseText.Contains('thisisthereason'));
+  lJSON := StrToJSONObject(r.BodyAsString);
+  try
+    Assert.areEqual(2, lJSON.O['task'].Count);
+    Assert.areEqual('http://pippo.it/1234', lJSON.O['task'].s['href']);
+    Assert.areEqual('1234', lJSON.O['task'].s['id']);
+  finally
+    lJSON.Free;
+  end;
+end;
+
+procedure TServerTest.TestResponseCreated;
+var
+  r: IRESTResponse;
+begin
+  r := RESTClient.doPOST('/responses/created', []);
+  Assert.areEqual<Integer>(HTTP_STATUS.Created, r.ResponseCode);
+  Assert.isTrue(r.ResponseText.Contains('thisisthereason'));
+  Assert.IsEmpty(r.BodyAsString);
+end;
+
+procedure TServerTest.TestResponseNoContent;
+var
+  r: IRESTResponse;
+begin
+  r := RESTClient.doGET('/responses/nocontent', []);
+  Assert.areEqual<Integer>(HTTP_STATUS.NoContent, r.ResponseCode);
+  Assert.isTrue(r.ResponseText.Contains('thisisthereason'));
+  Assert.IsEmpty(r.BodyAsString);
 end;
 
 // procedure TServerTest.TestSerializationType;

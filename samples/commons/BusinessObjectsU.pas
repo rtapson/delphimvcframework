@@ -28,7 +28,7 @@ interface
 
 uses
   MVCFramework.Serializer.Commons,
-  Generics.Collections;
+  Generics.Collections, Vcl.Graphics;
 
 type
 
@@ -44,19 +44,53 @@ type
     procedure SetFirstName(const Value: string);
     procedure SetLastName(const Value: string);
     procedure SetMarried(const Value: boolean);
+    function GetFullName: String;
   public
     function Equals(Obj: TObject): boolean; override;
 
     property ID: Int64 read fID write fID;
     property FirstName: string read FFirstName write SetFirstName;
     property LastName: string read FLastName write SetLastName;
-
+    property FullName: String read GetFullName;
     property DOB: TDate read FDOB write SetDOB;
     property Married: boolean read FMarried write SetMarried;
     constructor Create; virtual;
     class function GetNew(AFirstName, ALastName: string; ADOB: TDate; AMarried: boolean): TPerson;
     class function GetList(const aCount: Integer = 3): TObjectList<TPerson>;
   end;
+
+  IPerson = interface
+    ['{1D00C67A-A6D9-4B31-8291-705B339CDE9B}']
+    function GetName: String;
+    procedure SetName(const Value: String);
+    function GetAge: Integer;
+    procedure SetAge(const Value: Integer);
+    function GetDOB: TDate;
+    procedure SetDOB(const Value: TDate);
+    property Name: String read GetName write SetName;
+    property Age: Integer read GetAge write SetAge;
+    property DOB: TDate read GetDOB write SetDOB;
+  end;
+
+  [MVCNameCase(ncCamelCase)]
+  TInterfacedPerson = class(TInterfacedObject, IPerson)
+  private
+    fName: string;
+    FDOB: TDate;
+    fAge: Integer;
+  protected
+    function GetName: String;
+    procedure SetName(const Value: String);
+    function GetAge: Integer;
+    procedure SetAge(const Value: Integer);
+    function GetDOB: TDate;
+    procedure SetDOB(const Value: TDate);
+  public
+    property Name: String read GetName write SetName;
+    property Age: Integer read GetAge write SetAge;
+    property DOB: TDate read GetDOB write SetDOB;
+  end;
+
 
   TPeople = class(TObjectList<TPerson>);
 
@@ -90,20 +124,24 @@ type
   [MVCNameCase(ncLowerCase)]
   TCustomer = class
   private
-    FName: string;
+    fName: string;
     FAddressLine2: string;
     FAddressLine1: string;
     FContactFirst: string;
     FCity: string;
     FContactLast: string;
+    fLogo: TBitmap;
     procedure SetAddressLine1(const Value: string);
     procedure SetAddressLine2(const Value: string);
     procedure SetCity(const Value: string);
     procedure SetContactFirst(const Value: string);
     procedure SetContactLast(const Value: string);
     procedure SetName(const Value: string);
+    procedure SetLogo(const Value: TBitmap);
   public
-    property name: string read FName write SetName;
+    constructor Create;
+    destructor Destroy; override;
+    property Name: string read fName write SetName;
     [MVCDoNotSerialize]
     property ContactFirst: string read FContactFirst write SetContactFirst;
     [MVCDoNotSerialize]
@@ -111,6 +149,7 @@ type
     property AddressLine1: string read FAddressLine1 write SetAddressLine1;
     property AddressLine2: string read FAddressLine2 write SetAddressLine2;
     property City: string read FCity write SetCity;
+    property Logo: TBitmap read fLogo write SetLogo;
     class function GetList: TObjectList<TCustomer>;
   end;
 
@@ -158,6 +197,11 @@ begin
   end;
 end;
 
+function TPerson.GetFullName: String;
+begin
+  Result := Format('%s, %s', [FFirstName, FLastName]);
+end;
+
 class function TPerson.GetList(const aCount: Integer): TObjectList<TPerson>;
 var
   I: Integer;
@@ -174,14 +218,13 @@ begin
     Result := TObjectList<TPerson>.Create(true);
     for I := 1 to aCount do
     begin
-      Result.Add(TPerson.GetNew(GetRndFirstName, GetRndLastName, EncodeDate(1900 + Random(100),
-        Random(12) + 1, Random(27) + 1), true));
+      Result.Add(TPerson.GetNew(GetRndFirstName, GetRndLastName, EncodeDate(1900 + Random(100), Random(12) + 1,
+        Random(27) + 1), true));
     end;
   end;
 end;
 
-class function TPerson.GetNew(AFirstName, ALastName: string; ADOB: TDate;
-  AMarried: boolean): TPerson;
+class function TPerson.GetNew(AFirstName, ALastName: string; ADOB: TDate; AMarried: boolean): TPerson;
 begin
   Result := TPerson.Create;
   Result.FLastName := ALastName;
@@ -211,6 +254,18 @@ begin
 end;
 
 { TCustomer }
+
+constructor TCustomer.Create;
+begin
+  inherited;
+  fLogo := TBitmap.Create;
+end;
+
+destructor TCustomer.Destroy;
+begin
+  fLogo.Free;
+  inherited;
+end;
 
 class function TCustomer.GetList: TObjectList<TCustomer>;
 var
@@ -272,9 +327,14 @@ begin
   FContactLast := Value;
 end;
 
+procedure TCustomer.SetLogo(const Value: TBitmap);
+begin
+  fLogo := Value;
+end;
+
 procedure TCustomer.SetName(const Value: string);
 begin
-  FName := Value;
+  fName := Value;
 end;
 
 { TProgrammer }
@@ -322,6 +382,38 @@ begin
   FMetadata.Free;
   FItems.Free;
   inherited;
+end;
+
+{ TInterfacedPerson }
+
+function TInterfacedPerson.GetAge: Integer;
+begin
+  Result := fAge;
+end;
+
+function TInterfacedPerson.GetDOB: TDate;
+begin
+  Result := FDOB;
+end;
+
+function TInterfacedPerson.GetName: String;
+begin
+  Result := fName;
+end;
+
+procedure TInterfacedPerson.SetAge(const Value: Integer);
+begin
+  fAge := Value;
+end;
+
+procedure TInterfacedPerson.SetDOB(const Value: TDate);
+begin
+  FDOB := Value;
+end;
+
+procedure TInterfacedPerson.SetName(const Value: String);
+begin
+  fName := Value;
 end;
 
 initialization

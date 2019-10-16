@@ -77,7 +77,9 @@ type
   TRQLToken = (tkEq, tkLt, tkLe, tkGt, tkGe, tkNe, tkAnd, tkOr, tkSort, tkLimit, { RQL } tkAmpersand, tkEOF,
     tkOpenPar, tkClosedPar, tkOpenBracket, tkCloseBracket, tkComma, tkSemicolon, tkPlus, tkMinus, tkDblQuote,
     tkQuote, tkSpace, tkContains, tkIn, tkUnknown);
-  
+
+  TRQLValueType = (vtInteger, vtString, vtBoolean, vtNull, vtIntegerArray, vtStringArray);
+
   TRQLCustom = class;
 
   TRQLAbstractSyntaxTree = class(TObjectList<TRQLCustom>)
@@ -124,7 +126,8 @@ type
   public
     OpLeft: string;
     OpRight: string;
-    RightIsString: Boolean;
+    OpRightArray: TArray<String>;
+    RightValueType: TRQLValueType;
   end;
 
   TRQLLogicOperator = class(TRQLCustom)
@@ -184,6 +187,8 @@ type
     function MatchFieldStringValue(out lFieldValue: string): Boolean;
     function MatchFieldNumericValue(out lFieldValue: string): Boolean;
     function MatchFieldArrayValue(out lFieldValue: string): Boolean;
+    function MatchFieldBooleanValue(out lFieldValue: string): Boolean;
+    function MatchFieldNullValue(out lFieldValue: string): Boolean;
     function MatchSymbol(const Symbol: Char): Boolean;
     procedure SaveCurPos;
     procedure BackToLastPos;
@@ -199,10 +204,10 @@ type
     constructor Create(const MaxRecordCount: Integer = -1);
     destructor Destroy; override;
     procedure Execute(
-  const RQL: string;
-  out SQL: string;
-  const RQLCompiler: TRQLCompiler;
-  const UseLimit: Boolean = true);
+      const RQL: string;
+      out SQL: string;
+      const RQLCompiler: TRQLCompiler;
+      const UseLimit: Boolean = true);
   end;
 
   TRQLCompilerRegistry = class sealed
@@ -272,7 +277,7 @@ procedure TRQL2SQL.EatWhiteSpaces;
 var
   lToken: TRQLToken;
 begin
-  while True do
+  while true do
   begin
     SaveCurPos;
     lToken := GetToken;
@@ -330,7 +335,7 @@ begin
     fAST.Insert(0, TRQLWhere.Create);
     if GetToken = tkSemicolon then
     begin
-      ParseSortLimit(True);
+      ParseSortLimit(true);
     end;
   end
   else
@@ -500,7 +505,8 @@ begin
     fCurrToken := tkLimit;
     Exit(fCurrToken);
   end;
-  if (lChar = 'c') and (C(1) = 'o') and (C(2) = 'n') and (C(3) = 't') and (C(4) = 'a') and (C(5) = 'i') and (C(6) = 'n') and (C(7) = 's') then
+  if (lChar = 'c') and (C(1) = 'o') and (C(2) = 'n') and (C(3) = 't') and (C(4) = 'a') and (C(5) = 'i') and
+    (C(6) = 'n') and (C(7) = 's') then
   begin
     Skip(8);
     fCurrToken := tkContains;
@@ -537,9 +543,12 @@ procedure TRQL2SQL.ParseBinOperator(const aToken: TRQLToken; const aAST: TObject
 var
   lFieldName, lFieldValue: string;
   lBinOp: TRQLFilter;
-  lValueIsString: Boolean;
+  lValueType: TRQLValueType;
   lToken: TRQLToken;
+  lList: TList<String>;
+  lArrayValue: TArray<String>;
 begin
+  lValueType := TRQLValueType.vtInteger; //default
   EatWhiteSpaces;
   if GetToken <> tkOpenPar then
     Error('Expected "("');
@@ -559,22 +568,63 @@ begin
       Error('Expected string value');
     if not MatchSymbol('"') then
       Error('Unclosed string');
-    lValueIsString := True;
+    lValueType := vtString;
   end
   else if (aToken = tkIn) and (lToken = tkOpenBracket) then
   begin
-    if not MatchFieldArrayValue(lFieldValue) then
-      Error('Expected array value');
-    if not MatchSymbol(']') then
-      Error('Unclosed bracket');
-    lValueIsString := False;
+    lList := TList<String>.Create;
+    try
+      // if not MatchFieldArrayValue(lFieldValue) then
+      // Error('Expected array value');
+      EatWhiteSpaces;
+      if C(0) = '"' then
+      begin
+        Skip(1);
+        lValueType := vtStringArray;
+        while MatchFieldStringValue(lFieldValue) do
+        begin
+          lList.Add(lFieldValue);
+          if not MatchSymbol('"') then
+            Error('Expected ''"''');
+          EatWhiteSpaces;
+          if not MatchSymbol(',') then
+            Break;
+          EatWhiteSpaces;
+          if GetToken <> tkDblQuote then
+            Error('Expected ["]');
+        end;
+      end
+      else
+      begin
+        lValueType := vtIntegerArray;
+        while MatchFieldNumericValue(lFieldValue) do
+        begin
+          lList.Add(lFieldValue);
+          EatWhiteSpaces;
+          if not MatchSymbol(',') then
+            Break;
+          EatWhiteSpaces;
+        end;
+      end;
+      if not MatchSymbol(']') then
+        Error('Unclosed bracket');
+      lArrayValue := lList.ToArray;
+    finally
+      lList.Free;
+    end;
   end
   else
   begin
     BackToLastPos;
-    if not MatchFieldNumericValue(lFieldValue) then
-      Error('Expected numeric value');
-    lValueIsString := False;
+
+    if MatchFieldBooleanValue(lFieldValue) then
+      lValueType := vtBoolean
+    else if MatchFieldNullValue(LFieldValue) then
+      lValueType := vtNull
+    else if MatchFieldNumericValue(lFieldValue) then
+      lValueType := vtInteger
+    else
+      Error('Expected numeric, boolean or null value');
   end;
   EatWhiteSpaces;
   if GetToken <> tkClosedPar then
@@ -583,8 +633,11 @@ begin
   aAST.Add(lBinOp);
   lBinOp.Token := aToken;
   lBinOp.OpLeft := lFieldName;
-  lBinOp.RightIsString := lValueIsString;
-  lBinOp.OpRight := lFieldValue;
+  lBinOp.RightValueType := lValueType;
+  if lBinOp.RightValueType in [vtIntegerArray, vtStringArray] then
+    lBinOp.OpRightArray := lArrayValue
+  else
+    lBinOp.OpRight := lFieldValue;
 end;
 
 function TRQL2SQL.ParseFilters: Boolean;
@@ -593,7 +646,7 @@ var
 begin
   EatWhiteSpaces;
   SaveCurPos;
-  Result := True;
+  Result := true;
   lTk := GetToken;
   case lTk of
     tkEq, tkLt, tkLe, tkGt, tkGe, tkNe, tkContains, tkIn:
@@ -642,7 +695,7 @@ begin
   lRQLLimit := TRQLLimit.Create;
   fAST.Add(lRQLLimit);
   lRQLLimit.Token := tkLimit;
-  lRQLLimit.Start := StrToInt64(lStart); //XE7 compat
+  lRQLLimit.Start := StrToInt64(lStart); // XE7 compat
   if fMaxRecordCount > -1 then
   begin
     lRQLLimit.Count := Min(StrToInt64(lCount), fMaxRecordCount);
@@ -651,7 +704,7 @@ begin
   begin
     lRQLLimit.Count := StrToInt64(lCount);
   end;
-  Result := True;
+  Result := true;
 end;
 
 procedure TRQL2SQL.ParseLogicOperator(const aToken: TRQLToken;
@@ -669,7 +722,7 @@ begin
   EatWhiteSpaces;
   lLogicOp := TRQLLogicOperator.Create(aToken);
   aAST.Add(lLogicOp);
-  while True do
+  while true do
   begin
     EatWhiteSpaces;
     lToken := GetToken;
@@ -702,7 +755,7 @@ var
   lFieldName: string;
   lSort: TRQLSort;
 begin
-  Result := True;
+  Result := true;
   SaveCurPos;
   if GetToken <> tkSort then
   begin
@@ -716,7 +769,7 @@ begin
   fAST.Add(lSort);
   lSort.Token := tkSort;
 
-  while True do
+  while true do
   begin
     EatWhiteSpaces;
     lToken := GetToken;
@@ -766,53 +819,86 @@ end;
 
 function TRQL2SQL.MatchFieldArrayValue(out lFieldValue: string): Boolean;
 var
-  lChar: Char;
+  lStrFieldValue: string;
+  lNumFieldValue: string;
+  lIntValue: string;
 begin
-  Result := True;
-  while True do
+  EatWhiteSpaces;
+  if GetToken = tkDblQuote then
   begin
-    lChar := C(0);
-    // escape chars
-    if lChar = '\' then
+    while MatchFieldStringValue(lStrFieldValue) do
     begin
-      if C(1) = '[' then
+      MatchSymbol('"');
+      EatWhiteSpaces;
+      if GetToken = tkComma then
       begin
-        lFieldValue := lFieldValue + '[';
-        Skip(2);
+        EatWhiteSpaces;
+        MatchSymbol('"');
         Continue;
-      end;
-      if C(1) = ']' then
+      end
+      else
       begin
-        lFieldValue := lFieldValue + ']';
-        Skip(2);
-        Continue;
+        Skip(1);
+        if GetToken <> tkDblQuote then
+        begin
+          Exit(true);
+        end;
       end;
     end;
+  end
+  else
+  begin
+    MatchFieldNumericValue(lIntValue);
+  end;
 
-    SaveCurPos;
-    CheckEOF(GetToken);
-    BackToLastPos;
-
-    if lChar <> ']' then
+  while MatchFieldNumericValue(lNumFieldValue) do
+  begin
+    EatWhiteSpaces;
+    if MatchSymbol(',') then
     begin
-      lFieldValue := lFieldValue + lChar;
+      Continue;
     end
     else
-      Break;
-    Skip(1);
+    begin
+      Exit(true);
+    end;
   end;
+  Result := False;
+end;
+
+function TRQL2SQL.MatchFieldBooleanValue(out lFieldValue: string): Boolean;
+var
+  lChar: Char;
+begin
+  lFieldValue := '';
+  lChar := C(0).ToLower;
+
+  if (lChar = 't') and (C(1).ToLower = 'r') and (C(2).ToLower = 'u') and (C(3).ToLower = 'e') then
+  begin
+    Skip(4);
+    Result := True;
+    lFieldValue := 'true';
+  end
+  else if (lChar = 'f') and (C(1).ToLower = 'a') and (C(2).ToLower = 'l') and (C(3).ToLower = 's') and (C(4).ToLower = 'e') then
+  begin
+    Skip(5);
+    Result := True;
+    lFieldValue := 'false';
+  end
+  else
+    Exit(False)
 end;
 
 function TRQL2SQL.MatchFieldName(out lFieldName: string): Boolean;
 var
   lChar: Char;
 begin
-  Result := True;
+  Result := true;
   lChar := C(0);
   if IsLetter(lChar) then
   begin
     lFieldName := lChar;
-    while True do
+    while true do
     begin
       Skip(1);
       lChar := C(0);
@@ -828,15 +914,32 @@ begin
     Exit(False);
 end;
 
+function TRQL2SQL.MatchFieldNullValue(out lFieldValue: string): Boolean;
+var
+  lChar: Char;
+begin
+  lFieldValue := '';
+  lChar := C(0).ToLower;
+
+  if (lChar = 'n') and (C(1).ToLower = 'u') and (C(2).ToLower = 'l') and (C(3).ToLower = 'l') then
+  begin
+    Skip(4);
+    Result := True;
+    lFieldValue := 'NULL';
+  end
+  else
+    Exit(False)
+end;
+
 function TRQL2SQL.MatchFieldNumericValue(out lFieldValue: string): Boolean;
 var
   lChar: Char;
 begin
-  Result := True;
+  Result := true;
   lFieldValue := '';
   lChar := C(0);
 
-  if CharInSet(lChar, ['+','-']) then
+  if CharInSet(lChar, ['+', '-']) then
   begin
     lFieldValue := lChar;
     Skip(1);
@@ -846,7 +949,7 @@ begin
   if IsDigit(lChar) then
   begin
     lFieldValue := lFieldValue + lChar;
-    while True do
+    while true do
     begin
       Skip(1);
       lChar := C(0);
@@ -866,8 +969,8 @@ function TRQL2SQL.MatchFieldStringValue(out lFieldValue: string): Boolean;
 var
   lChar: Char;
 begin
-  Result := True;
-  while True do
+  Result := true;
+  while true do
   begin
     lChar := C(0);
     // escape chars
@@ -921,7 +1024,7 @@ constructor TRQLLogicOperator.Create(const Token: TRQLToken);
 begin
   inherited Create;
   Self.Token := Token;
-  fRQLFilter := TObjectList<TRQLCustom>.Create(True);
+  fRQLFilter := TObjectList<TRQLCustom>.Create(true);
 end;
 
 destructor TRQLLogicOperator.Destroy;
@@ -1045,14 +1148,15 @@ begin
     if lField.InstanceFieldName = lRQLProperty then
       Exit(lField.DatabaseFieldName);
   end;
-  raise ERQLException.CreateFmt('Property %s does not exist or is transient and cannot be used in RQL', [RQLPropertyName]);
+  raise ERQLException.CreateFmt('Property %s does not exist or is transient and cannot be used in RQL',
+    [RQLPropertyName]);
 end;
 
 { TRQLAbstractSyntaxTree }
 
 constructor TRQLAbstractSyntaxTree.Create;
 begin
-  inherited Create(True);
+  inherited Create(true);
 end;
 
 function TRQLAbstractSyntaxTree.TreeContainsToken(
@@ -1064,7 +1168,7 @@ begin
   for lItem in Self do
   begin
     if lItem.Token = aToken then
-      Exit(True);
+      Exit(true);
   end;
 end;
 

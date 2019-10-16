@@ -3,7 +3,7 @@ import os
 import subprocess
 from colorama import *
 import glob
-from shutil import copy2, rmtree
+from shutil import copy2, rmtree, copytree
 from datetime import datetime
 import pathlib
 
@@ -30,16 +30,23 @@ def get_delphi_projects_to_build(which='', delphi_version=DEFAULT_DELPHI_VERSION
     dversion = 'd' + delphi_version.replace('.', '')
     if not which or which == 'core':
         projects += glob.glob(r"packages\{dversion}\*.groupproj".format(dversion=dversion))
+        projects += glob.glob(r"tools\rql2sql\RQL2SQL.dproj")
+        projects += glob.glob(r"tools\entitygenerator\MVCAREntitiesGenerator.dproj")
     if not which or which == 'tests':
         projects += glob.glob(r"unittests\**\*.dproj")
     if not which or which == 'samples':
         projects += glob.glob(r"samples\**\*.dproj")
-    return projects
+        projects += glob.glob(r"samples\**\**\*.dproj")
+        projects += glob.glob(r"samples\**\**\**\*.dproj")
+    return sorted(projects)
 
 
 def build_delphi_project(ctx: context.Context, project_filename, config='DEBUG', delphi_version=DEFAULT_DELPHI_VERSION):
     delphi_versions = {
-        "10.1": {"path": "18.0", "desc": "Delphi 10.1 Seattle"},
+        "XE7": {"path": "15.0", "desc": "Delphi XE7"},
+		"XE8": {"path": "16.0", "desc": "Delphi XE8"},
+		"10": {"path": "17.0", "desc": "Delphi 10 Seattle"},
+        "10.1": {"path": "18.0", "desc": "Delphi 10.1 Berlin"},
         "10.2": {"path": "19.0", "desc": "Delphi 10.2 Tokyo"},
         "10.3": {"path": "20.0", "desc": "Delphi 10.3 Rio"},
     }
@@ -59,14 +66,14 @@ def build_delphi_project(ctx: context.Context, project_filename, config='DEBUG',
 
 def zip_samples(version):
     global g_output_folder
-    cmdline = "7z a " + g_output_folder + f"\\..\\dmvcframework_{version}_samples.zip -r -i@7ziplistfile.txt"
+    cmdline = "7z a " + g_output_folder + f"\\..\\{version}_samples.zip -r -i@7ziplistfile.txt"
     return subprocess.call(cmdline, shell=True) == 0
 
 
 def create_zip(ctx, version):
     global g_output_folder
     print("CREATING ZIP")
-    archive_name = r"..\dmvcframework_" + version + ".zip"
+    archive_name = "..\\" + version + ".zip"
     switches = ""
     files_name = "*"
     cmdline = f"..\\..\\7z.exe a {switches} {archive_name} *"
@@ -80,12 +87,18 @@ def copy_sources():
     os.makedirs(g_output_folder + "\\sources", exist_ok=True)
     os.makedirs(g_output_folder + "\\ideexpert", exist_ok=True)
     os.makedirs(g_output_folder + "\\packages", exist_ok=True)
+    os.makedirs(g_output_folder + "\\tools", exist_ok=True)
     # copying main sources
     print("Copying DMVCFramework Sources...")
     src = glob.glob("sources\\*.pas") + glob.glob("sources\\*.inc")
     for file in src:
         print("Copying " + file + " to " + g_output_folder + "\\sources")
         copy2(file, g_output_folder + "\\sources\\")
+
+    # copying tools
+    print("Copying tools...")
+    copytree('tools\\entitygenerator', g_output_folder + "\\tools\\entitygenerator")
+    copytree('tools\\rql2sql', g_output_folder + "\\tools\\rql2sql")
 
     # copying ideexperts
     print("Copying DMVCFramework IDEExpert...")
@@ -124,6 +137,14 @@ def copy_sources():
 def copy_libs(ctx):
     global g_output_folder
 
+    
+    # swagdoc
+    print("Copying libraries: SwagDoc...")
+    curr_folder = g_output_folder + "\\lib\\swagdoc"
+    os.makedirs(curr_folder, exist_ok=True)
+    if not ctx.run(rf"xcopy lib\swagdoc\*.* {curr_folder}\*.* /E /Y /R /V /F"):
+        raise Exception("Cannot copy SwagDoc")
+
     # loggerpro
     print("Copying libraries: LoggerPro...")
     curr_folder = g_output_folder + "\\lib\\loggerpro"
@@ -131,6 +152,7 @@ def copy_libs(ctx):
     if not ctx.run(rf"xcopy lib\loggerpro\*.* {curr_folder}\*.* /E /Y /R /V /F"):
         raise Exception("Cannot copy loggerpro")
 
+    # dmustache
     print("Copying libraries: dmustache...")
     curr_folder = g_output_folder + "\\lib\\dmustache"
     os.makedirs(curr_folder, exist_ok=True)
@@ -163,7 +185,7 @@ def copy_libs(ctx):
 
 
 def printkv(key, value):
-    print(Fore.RESET + key + ': ' + Fore.GREEN + value.rjust(50) + Fore.RESET)
+    print(Fore.RESET + key + ': ' + Fore.GREEN + value.rjust(60) + Fore.RESET)
 
 
 def init_build(version):
@@ -173,8 +195,11 @@ def init_build(version):
     global g_releases_path
     g_version = version
     g_output_folder = g_releases_path + "\\" + g_version
-    print(Fore.RESET + "BUILD VERSION".ljust(70) + g_version)
-    print(Fore.RESET + "OUTPUT PATH".ljust(70) + g_output_folder)
+    print()
+    print(Fore.RESET + Fore.RED + "*" * 80)
+    print(Fore.RESET + Fore.RED + " BUILD VERSION: " + g_version + Fore.RESET)
+    print(Fore.RESET + Fore.RED + " OUTPUT PATH  : " + g_output_folder + Fore.RESET)
+    print(Fore.RESET + Fore.RED + "*" * 80)    
 
     rmtree(g_output_folder, True)
     os.makedirs(g_output_folder, exist_ok=True)
@@ -185,6 +210,7 @@ def init_build(version):
     copy2("README.md", g_output_folder)
     copy2("3_0_0_breaking_changes.md", g_output_folder)
     copy2("3_1_0_breaking_changes.md", g_output_folder)
+    copy2("3_2_0_breaking_changes.md", g_output_folder)
     copy2("License.txt", g_output_folder)
 
 
@@ -195,7 +221,7 @@ def build_delphi_project_list(ctx, projects, config="DEBUG", filter='', delphi_v
             print(f"Skipped {os.path.basename(delphi_project)}")
             continue
         msg = f"Building: {os.path.basename(delphi_project)}  ({config})"
-        print(Fore.RESET + msg.ljust(70, '.'), end="")
+        print(Fore.RESET + msg.ljust(90, '.'), end="")
         res = build_delphi_project(ctx, delphi_project, 'DEBUG', delphi_version)
         if res.ok:
             print(Fore.GREEN + 'OK' + Fore.RESET)
@@ -251,8 +277,12 @@ def clean(ctx):
     rmtree(g_output_folder + r"\lib\loggerpro\packages\d103\__history", True)
     rmtree(g_output_folder + r"\lib\loggerpro\packages\d103\Win32\Debug", True)
     rmtree(g_output_folder + r"\lib\dmustache\.git", True)
+    rmtree(g_output_folder + r"\lib\swagdoc\lib", True)
+    rmtree(g_output_folder + r"\lib\swagdoc\deploy", True)
+    rmtree(g_output_folder + r"\lib\swagdoc\demos", True)
 
     to_delete = []
+    to_delete += glob.glob(g_output_folder + r"\**\*.exe", recursive=True)
     to_delete += glob.glob(g_output_folder + r"\**\*.dcu", recursive=True)
     to_delete += glob.glob(g_output_folder + r"\**\*.stat", recursive=True)
     to_delete += glob.glob(g_output_folder + r"\**\*.res", recursive=True)
@@ -275,7 +305,9 @@ def release(ctx, version="DEBUG", delphi_version=DEFAULT_DELPHI_VERSION, skip_bu
     init_build(version)
     if not skip_build:
         delphi_projects = get_delphi_projects_to_build('', delphi_version)
-        build_delphi_project_list(ctx, delphi_projects, version, '', delphi_version)
+        if not build_delphi_project_list(ctx, delphi_projects, version, '', delphi_version):
+            return False #fails build
+    print(Fore.RESET)
     copy_sources()
     copy_libs(ctx)
     clean(ctx)
@@ -288,7 +320,7 @@ def build_samples(ctx, version="DEBUG", filter="", delphi_version=DEFAULT_DELPHI
     """Builds samples"""
     init_build(version)
     delphi_projects = get_delphi_projects_to_build('samples', delphi_version)
-    build_delphi_project_list(ctx, delphi_projects, version, filter, delphi_version)
+    return build_delphi_project_list(ctx, delphi_projects, version, filter, delphi_version)
 
 
 @task
@@ -296,4 +328,4 @@ def build_core(ctx, version="DEBUG", delphi_version=DEFAULT_DELPHI_VERSION):
     """Builds core packages extensions"""
     init_build(version)
     delphi_projects = get_delphi_projects_to_build('core', delphi_version)
-    build_delphi_project_list(ctx, delphi_projects, version, '', delphi_version)
+    return build_delphi_project_list(ctx, delphi_projects, version, '', delphi_version)

@@ -36,10 +36,11 @@ uses
   System.SyncObjs,
   System.IOUtils,
   System.Generics.Collections,
-  // System.JSON,
   Data.DB,
   IdGlobal,
-  IdCoderMIME;
+  IdCoderMIME,
+  IdContext,
+  JsonDataObjects;
 
 {$I dmvcframeworkbuildconsts.inc}
 
@@ -116,7 +117,24 @@ type
     OneMiB = 1048576;
     OneKiB = 1024;
     DEFAULT_MAX_REQUEST_SIZE = OneMiB * 5; // 5 MiB
-    HATEOS_PROP_NAME = '_links';
+    HATEOAS_PROP_NAME = '_links';
+    X_HTTP_Method_Override = 'X-HTTP-Method-Override';
+  end;
+
+  HATEOAS = record
+  public const
+    /// <summary>
+    /// Target URI: It indicates the target resource URI. This is represented by the href attribute.
+    /// </summary>
+    HREF = 'href';
+    /// <summary>
+    /// Link relation: The link relation type describes how the current context is related to the target resource. This is represented by the rel attribute.
+    /// </summary>
+    REL = 'rel';
+    /// <summary>
+    /// Type: This indicates the expected resource media type. This is represented by the type attribute.
+    /// </summary>
+    _TYPE = 'type';
   end;
 
   TMVCConfigKey = record
@@ -251,12 +269,47 @@ type
     Conflict = 409;
     Gone = 410;
     LengthRequired = 411;
+    /// <summary>
+    /// 412 Precondition Failed
+    /// Any request can contain a conditional header defined in HTTP (If-
+    /// Match, If-Modified-Since, etc.) or the "If" or "Overwrite"
+    /// conditional headers defined in this specification.  If the server
+    /// evaluates a conditional header, and if that condition fails to hold,
+    /// then this error code MUST be returned.  On the other hand, if the
+    /// client did not include a conditional header in the request, then the
+    /// server MUST NOT use this status code.
+    /// </summary>
     PreconditionFailed = 412;
     RequestEntityTooLarge = 413;
     RequestURITooLong = 414;
     UnsupportedMediaType = 415;
     RequestedRangeNotSatisfiable = 416;
     ExpectationFailed = 417;
+    /// <summary>
+    ///   The 422 (Unprocessable Entity) status code means the server
+    ///   understands the content type of the request entity (hence a
+    ///   415(Unsupported Media Type) status code is inappropriate), and the
+    ///   syntax of the request entity is correct (thus a 400 (Bad Request)
+    ///   status code is inappropriate) but was unable to process the contained
+    ///   instructions.  For example, this error condition may occur if an XML
+    ///   request body contains well-formed (i.e., syntactically correct), but
+    ///   semantically erroneous, XML instructions.
+    /// </summary>
+    UnprocessableEntity = 422;
+    /// <summary>
+    ///  The 423 (Locked) status code means the source or destination resource
+    ///  of a method is locked.  This response SHOULD contain an appropriate
+    ///  precondition or postcondition code, such as 'lock-token-submitted' or 'no-conflicting-lock
+    /// </summary>
+    Locked = 423;
+    /// <summary>
+    /// The 424 (Failed Dependency) status code means that the method could
+    /// not be performed on the resource because the requested action
+    /// depended on another action and that action failed.  For example, if a
+    /// command in a PROPPATCH method fails, then, at minimum, the rest of
+    /// the commands will also fail with 424 (Failed Dependency).
+    /// </summary>
+    FailedDependency = 424;
     // Server Error 5xx
     /// <summary>
     /// 500 Internal Server Error
@@ -279,6 +332,16 @@ type
     ServiceUnavailable = 503;
     GatewayTimeout = 504;
     HTTPVersionNotSupported = 505;
+
+    /// <summary>
+    /// The 507 (Insufficient Storage) status code means the method could not
+    /// be performed on the resource because the server is unable to store
+    /// the representation needed to successfully complete the request.
+    /// This condition is considered to be temporary.  If the request that
+    /// received this status code was the result of a user action, the
+    /// request MUST NOT be repeated until it is requested by a separate user action.
+    /// </summary>
+    InsufficientStorage = 507;
   end;
 
   EMVCException = class(Exception)
@@ -287,13 +350,15 @@ type
     FAppErrorCode: UInt16;
     FDetailedMessage: string;
   protected
-    { protected declarations }
+    procedure CheckHTTPErrorCode(const AHTTPErrorCode: UInt16);
   public
     constructor Create(const AMsg: string); overload; virtual;
     constructor Create(const AMsg: string; const ADetailedMessage: string;
-      const AAppErrorCode: UInt16;
-      const AHttpErrorCode: UInt16 = HTTP_STATUS.InternalServerError); overload; virtual;
-    constructor Create(const AHttpErrorCode: UInt16; const AMsg: string); overload; virtual;
+      const AAppErrorCode: UInt16 = 0;
+      const AHTTPErrorCode: UInt16 = HTTP_STATUS.InternalServerError); overload; virtual;
+    constructor Create(const AHTTPErrorCode: UInt16; const AMsg: string); overload; virtual;
+    constructor Create(const AHTTPErrorCode: UInt16; const AAppErrorCode: Integer; const AMsg: string);
+      overload; virtual;
     constructor CreateFmt(const AMsg: string; const AArgs: array of const); reintroduce;
 
     property HttpErrorCode: UInt16 read FHttpErrorCode;
@@ -338,7 +403,12 @@ type
   end;
 
   EMVCViewError = class(EMVCException)
-
+  private
+    { private declarations }
+  protected
+    { protected declarations }
+  public
+    { public declarations }
   end;
 
   TMVCRequestParamsTable = class(TDictionary<string, string>)
@@ -369,6 +439,43 @@ type
     function ContainsKey(const Key: string): Boolean;
     function Keys: TArray<String>;
     property Items[const Key: string]: string read GetItems write SetItems; default;
+  end;
+
+  TMVCStringDictionaryList = class(TObjectList<TMVCStringDictionary>)
+  public
+    constructor Create;
+  end;
+
+  IMVCLinkItem = interface
+    ['{8BC70061-0DD0-4D0A-B135-F83A5C86629B}']
+    function Add(const PropName: String; const PropValue: String): IMVCLinkItem;
+  end;
+
+  IMVCLinks = interface
+    ['{8A116BED-9A10-4885-AD4B-DF38A7F0D7DF}']
+    function AddRefLink: IMVCLinkItem;
+    function Clear: IMVCLinks;
+    function LinksData: TMVCStringDictionaryList;
+  end;
+
+  TMVCLinks = class(TInterfacedObject, IMVCLinks)
+  private
+    fData: TMVCStringDictionaryList;
+  protected
+    function AddRefLink: IMVCLinkItem;
+    function Clear: IMVCLinks;
+  public
+    constructor Create; virtual;
+    destructor Destroy; override;
+    function LinksData: TMVCStringDictionaryList;
+  end;
+
+  TMVCDecoratorObject = class(TInterfacedObject, IMVCLinkItem)
+  private
+    fData: TMVCStringDictionary;
+  public
+    constructor Create(const aData: TMVCStringDictionary);
+    function Add(const PropName: String; const PropValue: String): IMVCLinkItem;
   end;
 
   { This type is thread safe }
@@ -459,19 +566,21 @@ function B64Encode(const aValue: string): string; overload;
 function B64Encode(const aValue: TBytes): string; overload;
 function B64Decode(const aValue: string): string;
 
-function URLSafeB64encode(const Value: string; IncludePadding: Boolean): string; overload;
+function URLSafeB64encode(const Value: string; IncludePadding: Boolean; AByteEncoding: IIdTextEncoding = nil): string; overload;
 function URLSafeB64encode(const Value: TBytes; IncludePadding: Boolean): string; overload;
-function URLSafeB64Decode(const Value: string): string;
+function URLSafeB64Decode(const Value: string; AByteEncoding: IIdTextEncoding = nil): string;
 
 function ByteToHex(AInByte: Byte): string;
 function BytesToHex(ABytes: TBytes): string;
+procedure Base64StringToFile(const aBase64String, AFileName: String; const aOverwrite: Boolean = False);
+function FileToBase64String(const FileName: String): String;
 
 procedure SplitContentMediaTypeAndCharset(const aContentType: string; var aContentMediaType: string;
   var aContentCharSet: string);
 function BuildContentType(const aContentMediaType: string; const aContentCharSet: string): string;
 
-function Dict: TMVCStringDictionary; overload;
-function Dict(const aKeys: array of string; const aValues: array of string)
+function StrDict: TMVCStringDictionary; overload;
+function StrDict(const aKeys: array of string; const aValues: array of string)
   : TMVCStringDictionary; overload;
 
 const
@@ -485,7 +594,7 @@ const
   // WindowBits: http://zlib.net/manual.html#Advanced
 
 var
-  Lock: TObject;
+  gLock: TObject;
 
 const
   RESERVED_IPS: array [1 .. 11] of array [1 .. 2] of string = (('0.0.0.0', '0.255.255.255'),
@@ -496,12 +605,21 @@ const
     ('224.0.0.0', '239.255.255.255'),
     ('240.0.0.0', '255.255.255.255'));
 
+
+type
+  TMVCParseAuthentication = class
+  public
+    class procedure OnParseAuthentication(AContext: TIdContext; const AAuthType, AAuthData: String; var VUsername,
+      VPassword: String; var VHandled: Boolean);
+  end;
+
 implementation
 
 uses
   IdCoder3to4,
-  JsonDataObjects,
-  MVCFramework.Serializer.JsonDataObjects;
+  System.NetEncoding,
+  MVCFramework.Serializer.JsonDataObjects,
+  MVCFramework.Serializer.Commons;
 
 var
   GlobalAppName, GlobalAppPath, GlobalAppExe: string;
@@ -509,18 +627,6 @@ var
 function AppPath: string;
 begin
   Result := GlobalAppPath;
-end;
-
-function IsReservedOrPrivateIP(const AIP: string): Boolean;
-var
-  I: Integer;
-  IntIP: Cardinal;
-begin
-  Result := False;
-  IntIP := IP2Long(AIP);
-  for I := low(RESERVED_IPS) to high(RESERVED_IPS) do
-    if (IntIP >= IP2Long(RESERVED_IPS[I][1])) and (IntIP <= IP2Long(RESERVED_IPS[I][2])) then
-      Exit(True);
 end;
 
 function IP2Long(const AIP: string): Cardinal;
@@ -533,6 +639,18 @@ begin
   Result := (StrToInt(lPieces[0]) * 16777216) + (StrToInt(lPieces[1]) * 65536) +
     (StrToInt(lPieces[2]) * 256) +
     StrToInt(lPieces[3]);
+end;
+
+function IsReservedOrPrivateIP(const AIP: string): Boolean;
+var
+  I: Integer;
+  IntIP: Cardinal;
+begin
+  Result := False;
+  IntIP := IP2Long(AIP);
+  for I := low(RESERVED_IPS) to high(RESERVED_IPS) do
+    if (IntIP >= IP2Long(RESERVED_IPS[I][1])) and (IntIP <= IP2Long(RESERVED_IPS[I][2])) then
+      Exit(True);
 end;
 
 // function IP2Long(const AIP: string): UInt32;
@@ -590,7 +708,8 @@ begin
     begin
       Result := lContentMediaType;
     end
-    else if lContentMediaType.StartsWith('text/') or lContentMediaType.StartsWith('application/')
+    else
+      if lContentMediaType.StartsWith('text/') or lContentMediaType.StartsWith('application/')
     then
     begin
       Result := lContentMediaType + ';charset=' + aContentCharSet.ToLower;
@@ -639,22 +758,37 @@ begin
 end;
 
 constructor EMVCException.Create(const AMsg, ADetailedMessage: string;
-  const AAppErrorCode, AHttpErrorCode: UInt16);
+  const AAppErrorCode, AHTTPErrorCode: UInt16);
 begin
   Create(AMsg);
-  FHttpErrorCode := AHttpErrorCode;
+  CheckHTTPErrorCode(AHTTPErrorCode);
+  FHttpErrorCode := AHTTPErrorCode;
   FAppErrorCode := AAppErrorCode;
   FDetailedMessage := ADetailedMessage;
 end;
 
-constructor EMVCException.Create(const AHttpErrorCode: UInt16; const AMsg: string);
+constructor EMVCException.Create(const AHTTPErrorCode: UInt16; const AMsg: string);
 begin
-  if (AHttpErrorCode div 100 = 0) or (AHttpErrorCode div 100 > 5) then
-  begin
-    raise EMVCException.CreateFmt('Invalid HTTP_STATUS [%d]', [AHttpErrorCode]);
-  end;
+  CheckHTTPErrorCode(AHTTPErrorCode);
   Create(AMsg);
-  FHttpErrorCode := AHttpErrorCode;
+  FHttpErrorCode := AHTTPErrorCode;
+end;
+
+procedure EMVCException.CheckHTTPErrorCode(const AHTTPErrorCode: UInt16);
+begin
+  if (AHTTPErrorCode div 100 = 0) or (AHTTPErrorCode div 100 > 5) then
+  begin
+    raise EMVCException.CreateFmt('Invalid HTTP_STATUS [%d]', [AHTTPErrorCode]);
+  end;
+end;
+
+constructor EMVCException.Create(const AHTTPErrorCode: UInt16;
+  const AAppErrorCode: Integer; const AMsg: string);
+begin
+  CheckHTTPErrorCode(AHTTPErrorCode);
+  Create(AMsg);
+  FHttpErrorCode := AHTTPErrorCode;
+  FAppErrorCode := AAppErrorCode;
 end;
 
 constructor EMVCException.CreateFmt(const AMsg: string; const AArgs: array of const);
@@ -921,12 +1055,12 @@ begin
   FFillChar := '='; { Do not Localize }
 end;
 
-function URLSafeB64encode(const Value: string; IncludePadding: Boolean): string; overload;
+function URLSafeB64encode(const Value: string; IncludePadding: Boolean; AByteEncoding: IIdTextEncoding = nil): string; overload;
 begin
   if IncludePadding then
-    Result := TURLSafeEncode.EncodeString(Value)
+    Result := TURLSafeEncode.EncodeString(Value, AByteEncoding)
   else
-    Result := TURLSafeEncode.EncodeString(Value).Replace('=', '', [rfReplaceAll]);
+    Result := TURLSafeEncode.EncodeString(Value, AByteEncoding).Replace('=', '', [rfReplaceAll]);
 end;
 
 /// <summary>
@@ -954,18 +1088,18 @@ begin
     Result := RTrim(TURLSafeEncode.EncodeBytes(TIdBytes(Value)), '=');
 end;
 
-function URLSafeB64Decode(const Value: string): string;
+function URLSafeB64Decode(const Value: string; AByteEncoding: IIdTextEncoding = nil): string;
 begin
   // SGR 2017-07-03 : b64url might not include padding. Need to add it before decoding
   case Length(Value) mod 4 of
     0:
       begin
-        Result := TURLSafeDecode.DecodeString(Value);
+        Result := TURLSafeDecode.DecodeString(Value, AByteEncoding);
       end;
     2:
-      Result := TURLSafeDecode.DecodeString(Value + '==');
+      Result := TURLSafeDecode.DecodeString(Value + '==', AByteEncoding);
     3:
-      Result := TURLSafeDecode.DecodeString(Value + '=');
+      Result := TURLSafeDecode.DecodeString(Value + '=', AByteEncoding);
   else
     raise EExternalException.Create('Illegal base64url length');
   end;
@@ -1010,12 +1144,12 @@ begin
   Self.WriteBuffer(UFTStr[Low(UFTStr)], Length(UFTStr));
 end;
 
-function Dict: TMVCStringDictionary; overload;
+function StrDict: TMVCStringDictionary; overload;
 begin
   Result := TMVCStringDictionary.Create;
 end;
 
-function Dict(const aKeys: array of string; const aValues: array of string)
+function StrDict(const aKeys: array of string; const aValues: array of string)
   : TMVCStringDictionary; overload;
 var
   I: Integer;
@@ -1025,16 +1159,130 @@ begin
     raise EMVCException.CreateFmt('Dict error. Got %d keys but %d values',
       [Length(aKeys), Length(aValues)]);
   end;
-  Result := Dict();
+  Result := StrDict();
   for I := Low(aKeys) to High(aKeys) do
   begin
-    Result.Add(aKeys[i], aValues[i]);
+    Result.Add(aKeys[I], aValues[I]);
   end;
 end;
 
+{ TMVCDecorator }
+
+function TMVCLinks.AddRefLink: IMVCLinkItem;
+begin
+  if not Assigned(fData) then
+  begin
+    fData := TMVCStringDictionaryList.Create;
+  end;
+
+  Result := TMVCDecoratorObject.Create(fData[fData.Add(TMVCStringDictionary.Create)]);
+end;
+
+function TMVCLinks.Clear: IMVCLinks;
+begin
+  if Assigned(fData) then
+  begin
+    fData.Clear;
+  end;
+  Result := Self;
+end;
+
+constructor TMVCLinks.Create;
+begin
+  inherited Create;
+  fData := nil;
+end;
+
+function TMVCLinks.LinksData: TMVCStringDictionaryList;
+begin
+  Result := fData;
+end;
+
+destructor TMVCLinks.Destroy;
+begin
+  FreeAndNil(fData);
+  inherited;
+end;
+
+{ TMVCDecoratorObject }
+
+function TMVCDecoratorObject.Add(const PropName,
+  PropValue: String): IMVCLinkItem;
+begin
+  fData.Items[PropName] := PropValue;
+  Result := Self;
+end;
+
+constructor TMVCDecoratorObject.Create(const aData: TMVCStringDictionary);
+begin
+  inherited Create;
+  fData := aData;
+end;
+
+{ TMVCNamedPairList }
+
+constructor TMVCStringDictionaryList.Create;
+begin
+  inherited Create(True);
+end;
+
+procedure Base64StringToFile(const aBase64String, AFileName: String; const aOverwrite: Boolean = False);
+var
+  lSS: TStringStream;
+  lFile: TFileStream;
+begin
+  lSS := TStringStream.Create;
+  try
+    lSS.WriteString(aBase64String);
+    lSS.Position := 0;
+    if aOverwrite then
+    begin
+      if TFile.Exists(AFileName) then
+      begin
+        TFile.Delete(AFileName);
+      end;
+    end;
+
+    lFile := TFileStream.Create(AFileName, fmCreate);
+    try
+      TMVCSerializerHelper.DecodeStream(lSS, lFile);
+    finally
+      lFile.Free;
+    end;
+  finally
+    lSS.Free;
+  end;
+end;
+
+function FileToBase64String(const FileName: String): String;
+var
+  lTemplateFileB64: TStringStream;
+  lTemplateFile: TFileStream;
+begin
+  lTemplateFileB64 := TStringStream.Create;
+  try
+    lTemplateFile := TFileStream.Create(FileName, fmOpenRead);
+    try
+      TMVCSerializerHelper.EncodeStream(lTemplateFile, lTemplateFileB64);
+    finally
+      lTemplateFile.Free;
+    end;
+    Result := lTemplateFileB64.DataString;
+  finally
+    lTemplateFileB64.Free;
+  end;
+end;
+
+class procedure TMVCParseAuthentication.OnParseAuthentication(AContext: TIdContext; const AAuthType, AAuthData: String; var VUsername,
+      VPassword: String; var VHandled: Boolean);
+begin
+  VHandled := SameText(LowerCase(AAuthType), 'bearer');
+end;
+
+
 initialization
 
-Lock := TObject.Create;
+gLock := TObject.Create;
 
 // SGR 2017-07-03 : Initialize decoding table for URLSafe Gb64 encoding
 TURLSafeDecode.ConstructDecodeTable(GURLSafeBase64CodeTable,
@@ -1046,6 +1294,6 @@ GlobalAppPath := IncludeTrailingPathDelimiter(ExtractFilePath(GetModuleName(HIns
 
 finalization
 
-FreeAndNil(Lock);
+FreeAndNil(gLock);
 
 end.

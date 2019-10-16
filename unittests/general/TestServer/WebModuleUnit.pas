@@ -26,10 +26,16 @@ unit WebModuleUnit;
 
 interface
 
-uses System.SysUtils,
+uses
+  System.SysUtils,
   System.Classes,
   Web.HTTPApp,
-  MVCFramework;
+  MVCFramework
+{$IFDEF MSWINDOWS}
+    ,
+  MVCFramework.Serializer.JsonDataObjects.OptionalCustomTypes
+{$ENDIF}
+    ;
 
 type
   Tbas = class(TWebModule)
@@ -47,10 +53,16 @@ implementation
 
 
 uses
-  TestServerControllerU, TestServerControllerExceptionU, SpeedMiddlewareU,
-  MVCFramework.Middleware.Authentication, System.Generics.Collections,
-  MVCFramework.Commons, TestServerControllerPrivateU, AuthHandlersU,
-  TestServerControllerJSONRPCU, MVCFramework.Middleware.Compression;
+  TestServerControllerU,
+  TestServerControllerExceptionU,
+  SpeedMiddlewareU,
+  MVCFramework.Middleware.Authentication,
+  System.Generics.Collections,
+  MVCFramework.Commons,
+  TestServerControllerPrivateU,
+  AuthHandlersU,
+  TestServerControllerJSONRPCU,
+  MVCFramework.Middleware.Compression;
 
 procedure Tbas.WebModuleCreate(Sender: TObject);
 begin
@@ -83,8 +95,9 @@ begin
     .AddMiddleware(TMVCBasicAuthenticationMiddleware.Create(TBasicAuthHandler.Create))
     .AddMiddleware(TMVCCustomAuthenticationMiddleware.Create(TCustomAuthHandler.Create, '/system/users/logged'))
     .AddMiddleware(TMVCCompressionMiddleware.Create);
-
-  // MVCEngine.Config[TMVCConfigKey.Messaging] := 'false';
+{$IFDEF MSWINDOWS}
+  RegisterOptionalCustomTypesSerializers(MVCEngine.Serializers[TMVCMediaType.APPLICATION_JSON]);
+{$ENDIF}
 end;
 
 end.
