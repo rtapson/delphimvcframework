@@ -45,11 +45,12 @@ type
     FWebModuleClassName : string;
     FControllerClassName: string;
     FControllerUnit: string;
+    FUseSpring4DContainer: Boolean;
     function GetCreatorType: string; override;
     function NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile; override;
     function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile; override;
   public
-    constructor Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String);
+    constructor Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; const bUseSpring4DContainer: Boolean);
   end;
 
 implementation
@@ -61,7 +62,7 @@ uses
   DMVC.Expert.CodeGen.Templates,
   DMVC.Expert.CodeGen.SourceFile;
 
-constructor TNewWebModuleUnitEx.Create(const aWebModuleClassName : string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String);
+constructor TNewWebModuleUnitEx.Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; const bUseSpring4DContainer: Boolean);
 begin
   Assert(Length(aWebModuleClassName) > 0);
   FAncestorName := '';
@@ -72,6 +73,7 @@ begin
   FControllerClassName := aControllerClassName;
   FControllerUnit := aControllerUnit;
   FMiddlewares := AMiddlewares;
+  FUseSpring4DContainer := bUseSpring4DContainer;
   Personality := APersonality;
   (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName( '', FUnitIdent, FFormName, FFileName);
 end;
@@ -91,7 +93,10 @@ begin
   //ModuleIdent is blank for some reason.
   // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
   // So using method mentioned by Marco Cantu.
-  Result := TSourceFile.Create(sWebModuleUnit, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares]);
+  if FUseSpring4DContainer then
+    Result := TSourceFile.Create(sSpring4DWebModule, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares])
+  else
+    Result := TSourceFile.Create(sWebModuleUnit, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares]);
 end;
 
 

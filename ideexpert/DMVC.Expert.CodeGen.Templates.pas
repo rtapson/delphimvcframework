@@ -366,6 +366,107 @@ resourcestring
     '  Width = 415' + sLineBreak +
     'end';
 
+  // 0 = unit name
+  // 1 = webmodule classname
+  // 2 = controller unit
+  // 3 - controller class name
+  sSpring4DWebModule =
+    'unit %0:s;' + sLineBreak +
+    '' + sLineBreak +
+    'interface' + sLineBreak +
+    '' + sLineBreak +
+    'uses System.SysUtils,' + sLineBreak +
+    '     System.Classes,' + sLineBreak +
+    '     Web.HTTPApp,' + sLineBreak +
+    '     MVCFramework,' + sLineBreak +
+    '     Spring.Container;' + sLineBreak +
+    '' + sLineBreak +
+    'type' + sLineBreak +
+    '  %1:s = class(TWebModule)' + sLineBreak +
+    '    procedure WebModuleCreate(Sender: TObject);' + sLineBreak +
+    '    procedure WebModuleDestroy(Sender: TObject);' + sLineBreak +
+    '  private' + sLineBreak +
+    '    FMVC: TMVCEngine;' + sLineBreak +
+    '    FContainer: TContainer;' + sLineBreak +
+    '    procedure BuildContainer;' + sLineBreak +
+    '  public' + sLineBreak +
+    '    { Public declarations }' + sLineBreak +
+    '  end;' + sLineBreak +
+    '' + sLineBreak +
+    'var' + sLineBreak +
+    '  WebModuleClass: TComponentClass = %1:s;' + sLineBreak +
+    '' + sLineBreak +
+    'implementation' + sLineBreak +
+    '' + sLineBreak +
+    '{$R *.dfm}' + sLineBreak +
+    '' + sLineBreak +
+    'uses' + sLineBreak +
+    '  System.IOUtils,' + sLineBreak +
+    '  MVCFramework.Commons,' + sLineBreak +
+    '  MVCFramework.Middleware.Compression,' + sLineBreak +
+    '  MVCFramework.Serializer.JsonDataObjects.CustomTypes,' + sLineBreak +
+    '  %2:s;' + sLineBreak +
+    '' + sLineBreak +
+    'procedure %1:s.BuildContainer;' + sLineBreak +
+    'begin' + sLineBreak +
+    '  FContainer := TContainer.Create;' + sLineBreak +
+    '' + sLineBreak +
+    '  //Add container registrations here....' + sLineBreak +
+    '  FContainer.RegisterType<%3:s>;' + sLineBreak +
+    '  FMVC.AddController(%3:s,' + sLineBreak +
+    '                    function: TMVCController' + sLineBreak +
+    '                    begin' + sLineBreak +
+    '                      Result := FContainer.Resolve<%3:s>;' + sLineBreak +
+    '                    end);' + sLineBreak +
+    '' + sLineBreak +
+    '  // Build the container' + sLineBreak +
+    '  FContainer.Build;' + sLineBreak +
+    'end;' + sLineBreak +
+    '' + sLineBreak +
+    'procedure %1:s.WebModuleCreate(Sender: TObject);' + sLineBreak +
+    'begin' + sLineBreak +
+    '  FMVC := TMVCEngine.Create(Self,' + sLineBreak +
+    '    procedure(Config: TMVCConfig)' + sLineBreak +
+    '    begin' + sLineBreak +
+    '      //enable static files' + sLineBreak +
+    '      Config[TMVCConfigKey.DocumentRoot] := TPath.Combine(ExtractFilePath(GetModuleName(HInstance)), ''www'');' + sLineBreak +
+    '      // session timeout (0 means session cookie)' + sLineBreak +
+    '      Config[TMVCConfigKey.SessionTimeout] := ''0'';' + sLineBreak +
+    '      //default content-type' + sLineBreak +
+    '      Config[TMVCConfigKey.DefaultContentType] := TMVCConstants.DEFAULT_CONTENT_TYPE;' + sLineBreak +
+    '      //default content charset' + sLineBreak +
+    '      Config[TMVCConfigKey.DefaultContentCharset] := TMVCConstants.DEFAULT_CONTENT_CHARSET;' + sLineBreak +
+    '      //unhandled actions are permitted?' + sLineBreak +
+    '      Config[TMVCConfigKey.AllowUnhandledAction] := ''false'';' + sLineBreak +
+    '      //default view file extension' + sLineBreak +
+    '      Config[TMVCConfigKey.DefaultViewFileExtension] := ''html'';' + sLineBreak +
+    '      //view path' + sLineBreak +
+    '      Config[TMVCConfigKey.ViewPath] := ''templates'';' + sLineBreak +
+    '      //Max Record Count for automatic Entities CRUD' + sLineBreak +
+    '      Config[TMVCConfigKey.MaxEntitiesRecordCount] := ''20'';' + sLineBreak +
+    '      //Enable Server Signature in response' + sLineBreak +
+    '      Config[TMVCConfigKey.ExposeServerSignature] := ''true'';' + sLineBreak +
+    '      // Define a default URL for requests that don''t map to a route or a file (useful for client side web app)' + sLineBreak +
+    '      Config[TMVCConfigKey.FallbackResource] := ''index.html'';' + sLineBreak +
+    '      // Max request size in bytes' + sLineBreak +
+    '      Config[TMVCConfigKey.MaxRequestSize] := IntToStr(TMVCConstants.DEFAULT_MAX_REQUEST_SIZE);' + sLineBreak +
+    '    end);' + sLineBreak +
+    '' + sLineBreak +
+    '    BuildContainer;' + sLineBreak +
+    '' + sLineBreak +
+    '  // To enable compression (deflate, gzip) just add this middleware as the last one ' + sLineBreak +
+    '  FMVC.AddMiddleware(TMVCCompressionMiddleware.Create);' + sLineBreak +
+    'end;' + sLineBreak +
+    '' + sLineBreak +
+    'procedure %1:s.WebModuleDestroy(Sender: TObject);' + sLineBreak +
+    'begin' + sLineBreak +
+    '  FContainer.Free;' + sLineBreak +
+    '  FMVC.Free;' + sLineBreak +
+    'end;' + sLineBreak +
+    '' + sLineBreak +
+    'end.';
+
+
 implementation
 
 end.

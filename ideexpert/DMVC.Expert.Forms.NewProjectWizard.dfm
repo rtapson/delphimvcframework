@@ -3,7 +3,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   Top = 0
   BorderStyle = bsDialog
   Caption = 'New DMVCFramework Project Wizard'
-  ClientHeight = 572
+  ClientHeight = 555
   ClientWidth = 354
   Color = clBtnFace
   Constraints.MinHeight = 145
@@ -18,7 +18,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   OnCreate = FormCreate
   DesignSize = (
     354
-    572)
+    555)
   PixelsPerInch = 96
   TextHeight = 13
   object lblWbModule: TLabel
@@ -30,7 +30,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   end
   object Label2: TLabel
     Left = 24
-    Top = 467
+    Top = 463
     Width = 55
     Height = 13
     Caption = 'Server Port'
@@ -388,7 +388,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   end
   object gbControllerUnitOptions: TGroupBox
     Left = 8
-    Top = 281
+    Top = 277
     Width = 338
     Height = 169
     Anchors = [akLeft, akTop, akRight]
@@ -455,7 +455,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   end
   object btnOK: TButton
     Left = 190
-    Top = 539
+    Top = 522
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -463,10 +463,11 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     Default = True
     ModalResult = 1
     TabOrder = 6
+    ExplicitTop = 588
   end
   object btnCancel: TButton
     Left = 271
-    Top = 539
+    Top = 522
     Width = 75
     Height = 25
     Anchors = [akRight, akBottom]
@@ -474,6 +475,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 7
+    ExplicitTop = 588
   end
   object chkCreateControllerUnit: TCheckBox
     Left = 24
@@ -507,7 +509,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   end
   object edtServerPort: TEdit
     Left = 24
-    Top = 486
+    Top = 482
     Width = 65
     Height = 21
     TabOrder = 5
@@ -523,5 +525,13 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     TabOrder = 2
     Visible = False
     OnClick = chkCreateControllerUnitClick
+  end
+  object chkUseSpring4DContainer: TCheckBox
+    Left = 24
+    Top = 250
+    Width = 287
+    Height = 17
+    Caption = 'Use Spring4D Container'
+    TabOrder = 8
   end
 end

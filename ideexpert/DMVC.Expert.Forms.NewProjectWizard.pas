@@ -36,6 +36,7 @@ type
     lblFrameworkVersion: TLabel;
     chkCreateCRUDMethods: TCheckBox;
     chkAnalyticsMiddleware: TCheckBox;
+    chkUseSpring4DContainer: TCheckBox;
     procedure chkCreateControllerUnitClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Image1Click(Sender: TObject);

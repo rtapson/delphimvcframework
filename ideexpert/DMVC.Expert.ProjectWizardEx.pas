@@ -122,7 +122,7 @@ begin
 
           // Create Webmodule Unit
           WebModuleCreator := TNewWebModuleUnitEx.Create(WizardForm.WebModuleClassName, WizardForm.ControllerClassName,
-            GetUnitName(ControllerUnit.FileName), WizardForm.Middlewares, APersonality);
+            GetUnitName(ControllerUnit.FileName), WizardForm.Middlewares, APersonality, WizardForm.chkUseSpring4DContainer.Checked);
           WebModuleUnit := ModuleServices.CreateModule(WebModuleCreator);
           if Project <> nil then
           begin
