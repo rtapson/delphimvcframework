@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2019 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -551,6 +551,12 @@ type
     InstanceFieldName: string;
     DatabaseFieldName: string;
   end;
+
+  TMVCCustomRouter = class abstract
+  public
+    function GetQualifiedActionName(): String; virtual; abstract;
+  end;
+
 
   TMVCFieldsMapping = TArray<TMVCFieldMap>;
 

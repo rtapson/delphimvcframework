@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2019 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -59,6 +59,8 @@ type
     { serialize declarations }
     [Test]
     procedure TestSerializeAllTypes;
+    [Test]
+    procedure TestSerializeAllNullableTypes;
     [Test]
     procedure TestSerializeAllTypesInList;
     [Test]
@@ -164,7 +166,7 @@ implementation
 
 uses
   MVCFramework.Serializer.JsonDataObjects.CustomTypes,
-  MVCFramework.Commons, System.TypInfo, BOs;
+  MVCFramework.Commons, System.TypInfo, BOs, BusinessObjectsU;
 
 const
   LINE_BREAK = #$A;
@@ -662,6 +664,27 @@ begin
     CheckObject(O);
   finally
     O.Free;
+  end;
+end;
+
+procedure TMVCTestSerializerJsonDataObjects.TestSerializeAllNullableTypes;
+var
+  lObj1, lObj2: BusinessObjectsU.TNullablesTest;
+  lSer: string;
+begin
+  lObj1 := BusinessObjectsU.TNullablesTest.Create;
+  try
+    lObj1.LoadSomeData;
+    lSer := FSerializer.SerializeObject(lObj1);
+    lObj2 := BusinessObjectsU.TNullablesTest.Create;
+    try
+      FSerializer.DeserializeObject(lSer, lObj2);
+      Assert.IsTrue(lObj1.Equals(lObj2));
+    finally
+      lObj2.Free;
+    end;
+  finally
+    lObj1.Free;
   end;
 end;
 

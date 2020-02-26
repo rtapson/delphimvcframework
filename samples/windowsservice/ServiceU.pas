@@ -32,9 +32,10 @@ implementation
 
 uses
   Web.WebReq,
-  WebModuleUnit1;
+  WebModuleUnit1, MVCFramework.Commons;
 
 {$R *.DFM}
+
 
 procedure ServiceController(CtrlCode: DWord); stdcall;
 begin
@@ -64,6 +65,7 @@ end;
 procedure TArticlesService.ServiceStart(Sender: TService; var Started: Boolean);
 begin
   fServer := TIdHTTPWebBrokerBridge.Create(nil);
+  fServer.OnParseAuthentication := TMVCParseAuthentication.OnParseAuthentication;
   fServer.DefaultPort := 8080;
   fServer.Active := True;
 end;

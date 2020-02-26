@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2019 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -119,9 +119,9 @@ begin
   if Assigned(lJSON) then
   begin
     lStream := AElementValue.AsObject as TStream;
-    lStream.Size := 0;
     if Assigned(lStream) then
     begin
+      lStream.Size := 0;
       SS := TStringStream.Create(lJSON.S[APropertyName]);
       try
         SS.Position := 0;
