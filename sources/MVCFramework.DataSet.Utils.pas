@@ -36,7 +36,8 @@ uses
   System.Rtti,
   JsonDataObjects,
   MVCFramework.Commons,
-  MVCFramework.Serializer.Commons;
+  MVCFramework.Serializer.Commons,
+  MVCFramework.RESTClient;
 
 type
   TFieldNamePolicy = (fpLowerCase, fpUpperCase, fpAsIs);
@@ -63,7 +64,7 @@ type
       AFieldNamePolicy: TFieldNamePolicy = TFieldNamePolicy.fpLowerCase); overload;
     procedure LoadFromJSONObjectString(AJSONObjectString: string); overload;
     procedure LoadFromJSONObjectString(AJSONObjectString: string; AIgnoredFields: TArray<string>); overload;
-    procedure LoadJSONArrayFromJSONObjectProperty(const AJSONObjectString: string; const aPropertyName: String;
+    procedure LoadJSONArrayFromJSONObjectProperty(const AJSONObjectString: string; const aPropertyName: string;
       const AFieldNamePolicy: TFieldNamePolicy = TFieldNamePolicy.fpLowerCase);
     procedure AppendFromJSONArrayString(AJSONArrayString: string); overload;
     procedure AppendFromJSONArrayString(AJSONArrayString: string; AIgnoredFields: TArray<string>;
@@ -71,6 +72,7 @@ type
     function AsObjectList<T: class, constructor>(CloseAfterScroll: boolean = false; OwnsObjects: boolean = true)
       : TObjectList<T>;
     function AsObject<T: class, constructor>(CloseAfterScroll: boolean = false): T;
+
   end;
 
   TDataSetUtils = class sealed
@@ -87,10 +89,10 @@ type
   [MVCNameCase(ncLowerCase)]
   TDataSetHolder = class
   private
-    FDataSet: TDataSet;
-    FMetadata: TMVCStringDictionary;
-    FOwns: boolean;
-    FDataSetSerializationType: TMVCDatasetSerializationType;
+    fDataSet: TDataSet;
+    fMetadata: TMVCStringDictionary;
+    fOwns: boolean;
+    fDataSetSerializationType: TMVCDatasetSerializationType;
   public
     constructor Create(const ADataSet: TDataSet; const AOwns: boolean = false;
       const ADataSetSerializationType: TMVCDatasetSerializationType = TMVCDatasetSerializationType.
@@ -98,9 +100,41 @@ type
     destructor Destroy; override;
     function SerializationType: TMVCDatasetSerializationType;
     [MVCNameAs('data')]
-    property Items: TDataSet read FDataSet;
+    property Items: TDataSet read fDataSet;
     [MVCNameAs('meta')]
-    property Metadata: TMVCStringDictionary read FMetadata;
+    property Metadata: TMVCStringDictionary read fMetadata;
+  end;
+
+  TMVCAPIBinder = class
+  protected
+    type
+    TMVCAPIBinderItem = class
+    private
+      fRESTClient: TRESTClient;
+      fDataSet: TDataSet;
+      fURI: string;
+      fPrimaryKeyNAme: string;
+      fLoading: boolean;
+      procedure ShowError(const AResponse: IRESTResponse);
+    public
+      constructor Create(const aRESTClient: TRESTClient; const ADataSet: TDataSet;
+        const aURI, aPrimaryKeyName: string);
+      destructor Destroy; override;
+      procedure HookBeforePost(DataSet: TDataSet);
+      procedure HookBeforeDelete(DataSet: TDataSet);
+      procedure HookBeforeRefresh(DataSet: TDataSet);
+      procedure HookAfterOpen(DataSet: TDataSet);
+      // procedure HookBeforeRowRequest(DataSet: TFDDataSet);
+    end;
+  private
+    fRESTClient: TRESTClient;
+
+  protected
+    fItems: TObjectList<TMVCAPIBinderItem>;
+  public
+    constructor Create(const aRESTClient: TRESTClient);
+    destructor Destroy; override;
+    procedure BindDataSetToAPI(const ADataSet: TDataSet; const aURI: string; const aPrimaryKeyName: string);
   end;
 
 function NewDataSetHolder(const ADataSet: TDataSet; const AMetaFiller: TProc<TMVCStringDictionary> = nil;
@@ -120,7 +154,7 @@ begin
   Result := TDataSetHolder.Create(ADataSet, AOwns, dstSingleRecord);
   if Assigned(AMetaFiller) then
   begin
-    AMetaFiller(Result.FMetadata);
+    AMetaFiller(Result.fMetadata);
   end;
 end;
 
@@ -130,7 +164,7 @@ begin
   Result := TDataSetHolder.Create(ADataSet, AOwns, dstAllRecords);
   if Assigned(AMetaFiller) then
   begin
-    AMetaFiller(Result.FMetadata);
+    AMetaFiller(Result.fMetadata);
   end;
 end;
 
@@ -154,7 +188,7 @@ begin
 end;
 
 procedure TDataSetHelper.LoadJSONArrayFromJSONObjectProperty(const AJSONObjectString: string;
-  const aPropertyName: String; const AFieldNamePolicy: TFieldNamePolicy);
+  const aPropertyName: string; const AFieldNamePolicy: TFieldNamePolicy);
 var
   lJson: TJSONObject;
 begin
@@ -373,7 +407,7 @@ var
   mf: MVCColumnAttribute;
   field_name: string;
   Value: TValue;
-  FoundAttribute: boolean;
+  lNeedToSet, FoundAttribute: boolean;
   FoundTransientAttribute: boolean;
   LField: TField;
 begin
@@ -405,15 +439,12 @@ begin
   end;
   for lRttiProp in _fields do
   begin
-
     if not _dict.TryGetValue(lRttiProp.Name, field_name) then
       Continue;
-
     LField := ADataSet.FindField(field_name);
-
     if not Assigned(LField) then
       Continue;
-
+    lNeedToSet := true;
     case lRttiProp.PropertyType.TypeKind of
       tkEnumeration: // tristan
         begin
@@ -443,15 +474,18 @@ begin
         Value := LField.AsString;
       tkUString, tkWChar, tkLString, tkWString:
         Value := LField.AsWideString;
-      { TODO -oDanieleT -cGeneral : This doesn0t work with nullable types }
-      // tkRecord:
-      // begin
-      /// /        MapDataSetFieldToNullableRTTIField(Value, LField, _field, AObject);
-      // end
+      tkRecord:
+        begin
+          MapDataSetFieldToNullableRTTIProperty(lRttiProp.GetValue(AObject), LField, lRttiProp, AObject);
+          lNeedToSet := false;
+        end
     else
       Continue;
     end;
-    lRttiProp.SetValue(AObject, Value);
+    if lNeedToSet then
+    begin
+      lRttiProp.SetValue(AObject, Value);
+    end;
   end;
   _dict.Free;
   _keys.Free;
@@ -493,25 +527,163 @@ constructor TDataSetHolder.Create(const ADataSet: TDataSet; const AOwns: boolean
   const ADataSetSerializationType: TMVCDatasetSerializationType = TMVCDatasetSerializationType.dstAllRecords);
 begin
   inherited Create;
-  FDataSet := ADataSet;
-  FMetadata := TMVCStringDictionary.Create;
-  FOwns := AOwns;
-  FDataSetSerializationType := ADataSetSerializationType;
+  fDataSet := ADataSet;
+  fMetadata := TMVCStringDictionary.Create;
+  fOwns := AOwns;
+  fDataSetSerializationType := ADataSetSerializationType;
 end;
 
 destructor TDataSetHolder.Destroy;
 begin
-  FMetadata.Free;
-  if FOwns then
+  fMetadata.Free;
+  if fOwns then
   begin
-    FDataSet.Free;
+    fDataSet.Free;
   end;
   inherited;
 end;
 
 function TDataSetHolder.SerializationType: TMVCDatasetSerializationType;
 begin
-  Result := FDataSetSerializationType;
+  Result := fDataSetSerializationType;
+end;
+
+{ TMVCAPIBinder }
+
+procedure TMVCAPIBinder.BindDataSetToAPI(const ADataSet: TDataSet; const aURI,
+  aPrimaryKeyName: string);
+begin
+  fItems.Add(TMVCAPIBinderItem.Create(fRESTClient, ADataSet, aURI, aPrimaryKeyName));
+end;
+
+constructor TMVCAPIBinder.Create(const aRESTClient: TRESTClient);
+begin
+  inherited Create;
+  fItems := TObjectList<TMVCAPIBinderItem>.Create(true);
+  fRESTClient := aRESTClient;
+end;
+
+destructor TMVCAPIBinder.Destroy;
+begin
+  fItems.Free;
+  inherited;
+end;
+
+{ TMVCAPIBinder.TMVCAPIBinderItem }
+
+constructor TMVCAPIBinder.TMVCAPIBinderItem.Create(const aRESTClient: TRESTClient; const ADataSet: TDataSet;
+  const aURI, aPrimaryKeyName: string);
+begin
+  inherited Create;
+  fRESTClient := aRESTClient;
+  fDataSet := ADataSet;
+  fURI := aURI;
+  fPrimaryKeyNAme := aPrimaryKeyName;
+
+  // procedure HookBeforePost(DataSet: TDataSet);
+  // procedure HookBeforeDelete(DataSet: TDataSet);
+  // procedure HookBeforeRefresh(DataSet: TDataSet);
+  // procedure HookAfterOpen(DataSet: TDataSet);
+
+  fDataSet.BeforePost := HookBeforePost;
+  fDataSet.BeforeDelete := HookBeforeDelete;
+  fDataSet.BeforeRefresh := HookBeforeRefresh;
+  fDataSet.AfterOpen := HookAfterOpen;
+end;
+
+destructor TMVCAPIBinder.TMVCAPIBinderItem.Destroy;
+begin
+
+  inherited;
+end;
+
+procedure TMVCAPIBinder.TMVCAPIBinderItem.HookAfterOpen(DataSet: TDataSet);
+var
+  Res: IRESTResponse;
+  lData: TJSONObject;
+begin
+  // this a simple sychronous request...
+  Res := fRESTClient.doGET('/api/customers', []);
+  if Res.HasError then
+  begin
+    ShowError(Res);
+  end;
+
+  lData := StrToJSONObject(Res.BodyAsString);
+  try
+    DataSet.DisableControls;
+    try
+      fLoading := true;
+      DataSet.LoadFromJSONArray(lData.A['items']);
+      fLoading := false;
+      DataSet.First;
+    finally
+      DataSet.EnableControls;
+    end;
+  finally
+    lData.Free;
+  end;
+end;
+
+procedure TMVCAPIBinder.TMVCAPIBinderItem.HookBeforeDelete(DataSet: TDataSet);
+var
+  Res: IRESTResponse;
+begin
+  if DataSet.State = dsBrowse then
+    Res := fRESTClient.DataSetDelete(fURI, DataSet.FieldByName(fPrimaryKeyNAme).AsString);
+  if not(Res.ResponseCode in [200]) then
+  begin
+    ShowError(Res);
+  end;
+end;
+
+procedure TMVCAPIBinder.TMVCAPIBinderItem.HookBeforePost(DataSet: TDataSet);
+var
+  lRes: IRESTResponse;
+  lLastID: Integer;
+begin
+  if not fLoading then
+  begin
+    lLastID := -1;
+    if fDataSet.State = dsInsert then
+    begin
+      lRes := fRESTClient.DataSetInsert(fURI, DataSet)
+    end
+    else
+    begin
+      lLastID := fDataSet.FieldByName(fPrimaryKeyNAme).AsInteger;
+      lRes := fRESTClient.DataSetUpdate(fURI, DataSet, lLastID.ToString);
+    end;
+    if not(lRes.ResponseCode in [200, 201]) then
+    begin
+      ShowError(lRes);
+    end
+    else
+    begin
+      DataSet.Refresh;
+      if lLastID > -1 then
+      begin
+        DataSet.Locate('id', lLastID, []);
+      end;
+    end;
+  end;
+end;
+
+procedure TMVCAPIBinder.TMVCAPIBinderItem.HookBeforeRefresh(DataSet: TDataSet);
+begin
+  DataSet.Close;
+  DataSet.Open;
+end;
+
+procedure TMVCAPIBinder.TMVCAPIBinderItem.ShowError(const AResponse: IRESTResponse);
+begin
+  if AResponse.HasError then
+    raise EMVCException.Create(AResponse.Error.Status);
+  // else
+  // MessageDlg(
+  // AResponse.ResponseCode.ToString + ': ' + AResponse.ResponseText + sLineBreak +
+  // AResponse.BodyAsString,
+  // mtError, [mbOK], 0);
 end;
 
 end.

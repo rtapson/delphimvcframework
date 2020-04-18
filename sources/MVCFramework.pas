@@ -274,7 +274,7 @@ type
     FPattern: string;
     FFormat: string;
   public
-    property Name: string read FName write FName;
+    property name: string read FName write FName;
     property Location: TSwagRequestParameterInLocation read FLocation write FLocation;
     property ParamType: TSwagTypeParameter read FType write FType;
     property ClassType: TClass read FClassType write FClassType;
@@ -293,9 +293,9 @@ type
 
   MVCStringEnumAttribute = class(MVCBaseAttribute)
   private
-    fValues: String;
+    fValues: string;
   public
-    constructor Create(const enumValue: String);
+    constructor Create(const enumValue: string);
     property Values: string read fValues write fValues;
   end;
 
@@ -583,7 +583,7 @@ type
     function ResponseStream: TStringBuilder;
     procedure Redirect(const AUrl: string);
     procedure ResponseStatus(const AStatusCode: Integer; const AReasonString: string = '');
-    procedure ResponseCreated(const Location: String = '');
+    procedure Render201Created(const Location: string = '');
     // Serializer access
     function Serializer: IMVCSerializer; overload;
     function Serializer(const AContentType: string; const ARaiseExcpIfNotExists: Boolean = True)
@@ -622,7 +622,7 @@ type
     /// <remarks>
     /// https://restfulapi.net/http-status-201-created/
     /// </remarks>
-    procedure ResponseCreated(const Location: String = ''; const Reason: String = 'Created'); virtual;
+    procedure Render201Created(const Location: string = ''; const Reason: string = 'Created'); virtual;
     /// <summary>
     /// Allow a server to accept a request for some other process (perhaps a batch-oriented process that is only run once per day) without requiring that the user agents connection to the server persist until the process is completed.
     /// The entity returned with this response SHOULD describe the requests current status and point to (or embed) a status monitor that can provide the user with (or without) an estimate of when the request will be fulfilled.
@@ -630,12 +630,12 @@ type
     /// <remarks>
     /// https://restfulapi.net/http-status-202-accepted/
     /// </remarks>
-    procedure ResponseAccepted(const HREF: String; const ID: String; const Reason: String = 'Accepted'); virtual;
+    procedure Render202Accepted(const HREF: string; const ID: string; const Reason: string = 'Accepted'); virtual;
     /// <summary>
     /// HTTP Status 204 (No Content) indicates that the server has successfully fulfilled the request and that there is no content to send in the response payload body. The server might want to return updated meta information in the form of entity-headers, which if present SHOULD be applied to current documents active view if any.
     /// The 204 response MUST NOT include a message-body and thus is always terminated by the first empty line after the header fields.
     /// </summary>
-    procedure ResponseNoContent(const Location: String = ''; const Reason: String = 'No Content'); virtual;
+    procedure Render204NoContent(const Location: string = ''; const Reason: string = 'No Content'); virtual;
     function Serializer: IMVCSerializer; overload;
     function Serializer(const AContentType: string; const ARaiseExceptionIfNotExists: Boolean = True)
       : IMVCSerializer; overload;
@@ -838,7 +838,7 @@ type
   TMVCEngine = class(TComponent)
   private const
     ALLOWED_TYPED_ACTION_PARAMETERS_TYPES =
-      'Integer, Int64, Single, Double, Extended, Boolean, TDate, TTime, TDateTime and String';
+      'Integer, Int64, Single, Double, Extended, Boolean, TDate, TTime, TDateTime, String and TGUID';
   private
     FViewEngineClass: TMVCViewEngineClass;
     FWebModule: TWebModule;
@@ -906,7 +906,7 @@ type
     procedure HTTP404(const AContext: TWebContext);
     procedure HTTP500(const AContext: TWebContext; const AReasonString: string = '');
     procedure SendRawHTTPStatus(const AContext: TWebContext; const HTTPStatusCode: Integer;
-      const AReasonString: string; const AClassName: String = '');
+      const AReasonString: string; const AClassName: string = '');
 
     property ViewEngineClass: TMVCViewEngineClass read GetViewEngineClass;
     property WebModule: TWebModule read FWebModule;
@@ -987,7 +987,7 @@ type
 
 function IsShuttingDown: Boolean;
 procedure EnterInShutdownState;
-function CreateResponse(const StatusCode: UInt16; const ReasonString: String; const Message: String = ''): TMVCResponse;
+function CreateResponse(const StatusCode: UInt16; const ReasonString: string; const Message: string = ''): TMVCResponse;
 
 implementation
 
@@ -1010,9 +1010,9 @@ begin
   TInterlocked.Add(_IsShuttingDown, 1);
 end;
 
-function CreateResponse(const StatusCode: UInt16; const ReasonString: String; const Message: String = ''): TMVCResponse;
+function CreateResponse(const StatusCode: UInt16; const ReasonString: string; const Message: string = ''): TMVCResponse;
 begin
-  Result := TMVCResponse.Create(StatusCode, ReasonString, Message);
+  Result := TMVCResponse.Create(StatusCode, ReasonString, message);
 end;
 
 { MVCHTTPMethodsAttribute }
@@ -1088,7 +1088,7 @@ end;
 
 { MVCStringEnumAttribute }
 
-constructor MVCStringEnumAttribute.Create(const enumValue: String);
+constructor MVCStringEnumAttribute.Create(const enumValue: string);
 begin
   fValues := enumValue;
 end;
@@ -1324,7 +1324,8 @@ begin
     FContentFields := TDictionary<string, string>.Create;
     for I := 0 to Pred(FWebRequest.ContentFields.Count) do
     begin
-      FContentFields.Add(LowerCase(FWebRequest.ContentFields.Names[I]), FWebRequest.ContentFields.ValueFromIndex[I]);
+      FContentFields.AddOrSetValue(LowerCase(FWebRequest.ContentFields.Names[I]),
+        FWebRequest.ContentFields.ValueFromIndex[I]);
     end;
   end;
   Result := FContentFields;
@@ -1964,6 +1965,7 @@ begin
   FMediaTypes.Add('.jpg', TMVCMediaType.IMAGE_JPEG);
   FMediaTypes.Add('.jpeg', TMVCMediaType.IMAGE_JPEG);
   FMediaTypes.Add('.png', TMVCMediaType.IMAGE_PNG);
+  FMediaTypes.Add('.ico', TMVCMediaType.IMAGE_X_ICON);
   FMediaTypes.Add('.appcache', TMVCMediaType.TEXT_CACHEMANIFEST);
 
   Log.Info('EXIT: Config default values', LOGGERPRO_TAG);
@@ -2146,15 +2148,8 @@ begin
                   end
                   else
                   begin
-                    try
-                      FillActualParamsForAction(LContext, LActionFormalParams, LRouter.MethodToCall.name,
-                        LActualParams);
-                    except
-                      on E: Exception do
-                      begin
-                        SendRawHTTPStatus(LContext, HTTP_STATUS.BadRequest, E.Message, E.Classname);
-                      end;
-                    end;
+                    FillActualParamsForAction(LContext, LActionFormalParams, LRouter.MethodToCall.name,
+                      LActualParams);
                   end;
 
                   LSelectedController.OnBeforeAction(LContext, LRouter.MethodToCall.name, LHandled);
@@ -2196,7 +2191,12 @@ begin
                     LContext.Response.StatusCode := HTTP_STATUS.NotFound;
                     LContext.Response.ReasonString := 'Not Found';
                     fOnRouterLog(LRouter, rlsRouteNotFound, LContext);
-                    raise EMVCException.Create(LContext.Response.StatusCode, LContext.Response.ReasonString);
+                    raise EMVCException.Create(
+                      LContext.Response.ReasonString,
+                      LContext.Request.HTTPMethodAsString + ' ' + LContext.Request.PathInfo,
+                      0,
+                      HTTP_STATUS.NotFound
+                      );
                   end;
                 end
                 else
@@ -2339,7 +2339,8 @@ var
   lQualifiedName: string;
 begin
   if AContext.Request.SegmentParamsCount <> Length(AActionFormalParams) then
-    raise EMVCException.CreateFmt('Parameters count mismatch (expected %d actual %d) for action "%s"',
+    raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest,
+      'Parameters count mismatch (expected %d actual %d) for action "%s"',
       [Length(AActionFormalParams), AContext.Request.SegmentParamsCount, AActionName]);
 
   SetLength(AActualParams, Length(AActionFormalParams));
@@ -2349,7 +2350,7 @@ begin
 
     if not AContext.Request.SegmentParam(ParamName, StrValue) then
       raise EMVCException.CreateFmt
-        ('Invalid parameter %s for action %s (Hint: Here parameters names are case-sensitive)',
+        (HTTP_STATUS.BadRequest, 'Invalid parameter %s for action %s (Hint: Here parameters names are case-sensitive)',
         [ParamName, AActionName]);
 
     case AActionFormalParams[I].ParamType.TypeKind of
@@ -2357,13 +2358,23 @@ begin
         try
           AActualParams[I] := StrToInt(StrValue);
         except
-          raise EMVCException.CreateFmt('Invalid Integer value for param [%s]', [AActionFormalParams[I].name]);
+          on E: Exception do
+          begin
+            raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest,
+              'Invalid Integer value for param [%s] - [CLASS: %s][MSG: %s]',
+              [AActionFormalParams[I].name, E.Classname, E.Message]);
+          end;
         end;
       tkInt64:
         try
           AActualParams[I] := StrToInt64(StrValue);
         except
-          raise EMVCException.CreateFmt('Invalid Int64 value for param [%s]', [AActionFormalParams[I].name]);
+          on E: Exception do
+          begin
+            raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest,
+              'Invalid Int64 value for param [%s] - [CLASS: %s][MSG: %s]',
+              [AActionFormalParams[I].name, E.Classname, E.Message]);
+          end;
         end;
       tkUString:
         begin
@@ -2379,7 +2390,12 @@ begin
               WasDateTime := True;
               AActualParams[I] := ISODateToDate(StrValue);
             except
-              raise EMVCException.CreateFmt('Invalid TDate value for param [%s]', [AActionFormalParams[I].name]);
+              on E: Exception do
+              begin
+                raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest,
+                  'Invalid TDate value for param [%s] - [CLASS: %s][MSG: %s]',
+                  [AActionFormalParams[I].name, E.Classname, E.Message]);
+              end;
             end;
           end
           else
@@ -2391,8 +2407,9 @@ begin
             except
               on E: Exception do
               begin
-                raise EMVCException.CreateFmt('Invalid TDateTime value for param [%s][%s]',
-                  [AActionFormalParams[I].name, E.Message]);
+                raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest,
+                  'Invalid TDateTime value for param [%s] - [CLASS: %s][MSG: %s]',
+                  [AActionFormalParams[I].name, E.Classname, E.Message]);
               end;
             end;
           end
@@ -2403,7 +2420,12 @@ begin
               WasDateTime := True;
               AActualParams[I] := ISOTimeToTime(StrValue);
             except
-              raise EMVCException.CreateFmt('Invalid TTime value for param [%s]', [AActionFormalParams[I].name]);
+              on E: Exception do
+              begin
+                raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest,
+                  'Invalid TTime value for param [%s] - [CLASS: %s][MSG: %s]',
+                  [AActionFormalParams[I].name, E.Classname, E.Message]);
+              end;
             end;
           end;
           if not WasDateTime then
@@ -2411,7 +2433,12 @@ begin
               FormatSettings.DecimalSeparator := '.';
               AActualParams[I] := StrToFloat(StrValue, FormatSettings);
             except
-              raise EMVCException.CreateFmt('Invalid Float value for param [%s]', [AActionFormalParams[I].name]);
+              on E: Exception do
+              begin
+                raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest,
+                  'Invalid Float value for param [%s] - [CLASS: %s][MSG: %s]',
+                  [AActionFormalParams[I].name, E.Classname, E.Message]);
+              end;
             end;
         end;
       tkEnumeration:
@@ -2424,17 +2451,36 @@ begin
               if SameText(StrValue, 'false') or SameText(StrValue, '0') then
               AActualParams[I] := False
             else
+            begin
               raise EMVCException.CreateFmt
-                ('Invalid boolean value for parameter %s. Boolean parameters accepts only "true"/"false" or "1"/"0".',
+                (HTTP_STATUS.BadRequest,
+                'Invalid boolean value for parameter %s. Boolean parameters accepts only "true"/"false" or "1"/"0".',
                 [ParamName]);
+            end;
+          end
+          else
+          begin
+            raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest, 'Invalid type for parameter %s. Allowed types are ' +
+              ALLOWED_TYPED_ACTION_PARAMETERS_TYPES, [ParamName]);
+          end;
+        end;
+      tkRecord:
+        begin
+          if AActionFormalParams[I].ParamType.QualifiedName = 'System.TGUID' then
+          begin
+            try
+              AActualParams[I] := TValue.From<TGUID>(TMVCGuidHelper.GuidFromString(StrValue));
+            except
+              raise EMVCException.CreateFmt('Invalid Guid value for param [%s]', [AActionFormalParams[I].name]);
+            end;
           end
           else
             raise EMVCException.CreateFmt('Invalid type for parameter %s. Allowed types are ' +
               ALLOWED_TYPED_ACTION_PARAMETERS_TYPES, [ParamName]);
-        end;
+        end
     else
       begin
-        raise EMVCException.CreateFmt('Invalid type for parameter %s. Allowed types are ' +
+        raise EMVCException.CreateFmt(HTTP_STATUS.BadRequest, 'Invalid type for parameter %s. Allowed types are ' +
           ALLOWED_TYPED_ACTION_PARAMETERS_TYPES, [ParamName]);
       end;
     end;
@@ -2450,37 +2496,37 @@ end;
 class function TMVCEngine.GetCurrentSession(const ASessionTimeout: Integer; const ASessionId: string;
   const ARaiseExceptionIfExpired: Boolean): TWebSession;
 var
-  List: TObjectDictionary<string, TWebSession>;
-  IsExpired: Boolean;
+  lSessionList: TObjectDictionary<string, TWebSession>;
 begin
   Result := nil;
-
-  List := GlobalSessionList;
-  TMonitor.Enter(List);
+  lSessionList := GlobalSessionList;
+  TMonitor.Enter(lSessionList);
   try
     if not ASessionId.IsEmpty then
     begin
-      IsExpired := True;
-      if List.TryGetValue(ASessionId, Result) then
-        if (ASessionTimeout = 0) then
-          IsExpired := MinutesBetween(Now, Result.LastAccess) > DEFAULT_SESSION_INACTIVITY
-        else
-          IsExpired := MinutesBetween(Now, Result.LastAccess) > ASessionTimeout;
-
-      if Assigned(Result) then
-        if IsExpired then
+      if lSessionList.TryGetValue(ASessionId, Result) then
+      begin
+        { https://github.com/danieleteti/delphimvcframework/issues/355 }
+        if Result.IsExpired then
         begin
-          List.Remove(ASessionId);
+          lSessionList.Remove(ASessionId);
           if ARaiseExceptionIfExpired then
+          begin
             raise EMVCSessionExpiredException.Create('Session expired.')
+          end
           else
+          begin
             Result := nil;
+          end;
         end
         else
+        begin
           Result.MarkAsUsed;
+        end;
+      end;
     end;
   finally
-    TMonitor.Exit(List);
+    TMonitor.Exit(lSessionList);
   end;
 end;
 
@@ -2531,7 +2577,7 @@ begin
 end;
 
 procedure TMVCEngine.SendRawHTTPStatus(const AContext: TWebContext; const HTTPStatusCode: Integer;
-  const AReasonString: string; const AClassName: String);
+  const AReasonString: string; const AClassName: string);
 var
   lSer: IMVCSerializer;
   lError: TMVCErrorResponse;
@@ -3030,7 +3076,7 @@ begin
   Self.Render<T>(ACollection, AOwns, stDefault, ASerializationAction);
 end;
 
-procedure TMVCRenderer.ResponseAccepted(const HREF: String; const ID: String; const Reason: String);
+procedure TMVCRenderer.Render202Accepted(const HREF: string; const ID: string; const Reason: string);
 begin
   if HREF.IsEmpty then
   begin
@@ -3040,7 +3086,7 @@ begin
   Render(TMVCAcceptedResponse.Create(HREF, ID));
 end;
 
-procedure TMVCRenderer.ResponseCreated(const Location, Reason: String);
+procedure TMVCRenderer.Render201Created(const Location, Reason: string);
 begin
   if not Location.IsEmpty then
   begin
@@ -3049,7 +3095,7 @@ begin
   ResponseStatus(HTTP_STATUS.Created, Reason);
 end;
 
-procedure TMVCRenderer.ResponseNoContent(const Location, Reason: String);
+procedure TMVCRenderer.Render204NoContent(const Location, Reason: string);
 begin
   if not Location.IsEmpty then
   begin

@@ -38,6 +38,9 @@ type
     btnTransientFields: TButton;
     FDConnection1: TFDConnection;
     btnNullTest: TButton;
+    btnCRUDNoAutoInc: TButton;
+    btnCRUDWithStringPKs: TButton;
+    btnWithSpaces: TButton;
     procedure btnCRUDClick(Sender: TObject);
     procedure btnInheritanceClick(Sender: TObject);
     procedure btnMultiThreadingClick(Sender: TObject);
@@ -50,6 +53,9 @@ type
     procedure FormShow(Sender: TObject);
     procedure btnNullablesClick(Sender: TObject);
     procedure btnNullTestClick(Sender: TObject);
+    procedure btnCRUDNoAutoIncClick(Sender: TObject);
+    procedure btnCRUDWithStringPKsClick(Sender: TObject);
+    procedure btnWithSpacesClick(Sender: TObject);
   private
     procedure Log(const Value: string);
   public
@@ -122,6 +128,141 @@ begin
   end;
 end;
 
+procedure TMainForm.btnCRUDNoAutoIncClick(Sender: TObject);
+var
+  lCustomer: TCustomerPlain;
+  lID: Integer;
+  I: Integer;
+begin
+  Log('** Simple CRUD (no autoinc) test');
+  Log('There are ' + TMVCActiveRecord.Count<TCustomerPlain>().ToString + ' row/s for entity ' +
+    TCustomerPlain.ClassName);
+  TMVCActiveRecord.DeleteAll(TCustomerPlain);
+  Log('Deleting all entities ' + TCustomerPlain.ClassName);
+  for I := 1 to 100 do
+  begin
+    lCustomer := TCustomerPlain.Create;
+    try
+      lCustomer.ID := I;
+      // just for test!!
+      case I mod 3 of
+        0:
+          lCustomer.CompanyName := 'Google Inc.';
+        1:
+          lCustomer.CompanyName := 'bit Time Professionals';
+        2:
+          lCustomer.CompanyName := 'Walt Disney Corp.';
+      end;
+      lCustomer.City := 'Montain View, CA';
+      lCustomer.Note := 'Hello there!';
+      lCustomer.Insert;
+      lID := lCustomer.ID;
+      Log('Just inserted Customer ' + lID.ToString);
+    finally
+      lCustomer.Free;
+    end;
+  end;
+
+  Log('Now there are ' + TMVCActiveRecord.Count<TCustomerPlain>().ToString + ' row/s for entity ' +
+    TCustomerPlain.ClassName);
+  TMVCActiveRecord.DeleteRQL(TCustomerPlain, 'lt(id,90)');
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerPlain>(lID);
+  try
+    Assert(not lCustomer.Code.HasValue);
+    lCustomer.Code.Value := '5678';
+    lCustomer.Note := lCustomer.Note + sLineBreak + 'Code changed to 5678';
+    lCustomer.Update;
+    Log('Just updated Customer ' + lID.ToString);
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TCustomerPlain.Create;
+  try
+    lCustomer.LoadByPK(lID);
+    lCustomer.Code.Value := '9012';
+    lCustomer.Update;
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerPlain>(lID);
+  try
+    lCustomer.Delete;
+    Log('Just deleted Customer ' + lID.ToString);
+  finally
+    lCustomer.Free;
+  end;
+end;
+
+procedure TMainForm.btnCRUDWithStringPKsClick(Sender: TObject);
+var
+  lCustomer: TCustomerWithCode;
+  lCode: string;
+  I: Integer;
+begin
+  Log('** Simple CRUD (with string pks) test');
+  Log('There are ' + TMVCActiveRecord.Count<TCustomerWithCode>().ToString + ' row/s for entity ' +
+    TCustomerWithCode.ClassName);
+  TMVCActiveRecord.DeleteAll(TCustomerWithCode);
+  Log('Deleting all entities ' + TCustomerWithCode.ClassName);
+  for I := 1 to 100 do
+  begin
+    lCustomer := TCustomerWithCode.Create;
+    try
+      lCustomer.Code := I.ToString.PadLeft(4, '0');
+      // just for test!!
+      case I mod 3 of
+        0:
+          lCustomer.CompanyName := 'Google Inc.';
+        1:
+          lCustomer.CompanyName := 'bit Time Professionals';
+        2:
+          lCustomer.CompanyName := 'Walt Disney Corp.';
+      end;
+      lCustomer.City := 'Montain View, CA';
+      lCustomer.Note := 'Hello there!';
+      lCustomer.Insert;
+      lCode := lCustomer.Code.Value;
+      Log('Just inserted Customer ' + lCode);
+    finally
+      lCustomer.Free;
+    end;
+  end;
+
+  Log('Now there are ' + TMVCActiveRecord.Count<TCustomerWithCode>().ToString + ' row/s for entity ' +
+    TCustomerPlain.ClassName);
+  TMVCActiveRecord.DeleteRQL(TCustomerWithCode, 'lt(code,"0090")');
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithCode>(lCode);
+  try
+    Assert(lCustomer.Code.HasValue);
+    lCustomer.Note := lCustomer.Note + sLineBreak + 'Note changed!';
+    lCustomer.Update;
+    Log('Just updated Customer ' + lCode);
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TCustomerWithCode.Create;
+  try
+    lCustomer.LoadByPK(lCode);
+    lCustomer.CompanyName := 'My New Company!';
+    lCustomer.Update;
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithCode>(lCode);
+  try
+    lCustomer.Delete;
+    Log('Just deleted Customer ' + lCode);
+  finally
+    lCustomer.Free;
+  end;
+end;
+
 procedure TMainForm.btnInheritanceClick(Sender: TObject);
 var
   lCustomerEx: TCustomerEx;
@@ -167,8 +308,8 @@ begin
           try
             lCustomer.Code := Format('%5.5d', [TThread.CurrentThread.ThreadID, I]);
             lCustomer.City := Cities[Random(high(Cities) + 1)];
-            lCustomer.CompanyName := Format('%s %s %s', [lCustomer.City, Stuff[Random(High(Stuff) + 1)],
-              CompanySuffix[Random(High(CompanySuffix) + 1)]]);
+            lCustomer.CompanyName := Format('%s %s %s', [lCustomer.City, Stuff[Random(high(Stuff) + 1)],
+              CompanySuffix[Random(high(CompanySuffix) + 1)]]);
             lCustomer.Note := lCustomer.CompanyName + ' is from ' + lCustomer.City;
             lCustomer.Insert;
           finally
@@ -528,6 +669,8 @@ begin
     lCustomers := TMVCActiveRecord.Select<TCustomer>('SELECT * FROM customers WHERE description LIKE ''%google%''', [])
   else if ActiveRecordConnectionsRegistry.GetCurrentBackend = 'interbase' then
     lCustomers := TMVCActiveRecord.Select<TCustomer>('SELECT * FROM customers WHERE description LIKE ''%google%''', [])
+  else if ActiveRecordConnectionsRegistry.GetCurrentBackend = 'mssql' then
+    lCustomers := TMVCActiveRecord.Select<TCustomer>('SELECT * FROM customers WHERE description LIKE ''%google%''', [])
   else
     raise Exception.Create('Unsupported backend: ' + ActiveRecordConnectionsRegistry.GetCurrentBackend);
 
@@ -552,6 +695,35 @@ begin
     lDS.Free;
   end;
 
+  lDS := TMVCActiveRecord.SelectDataSet
+    ('SELECT * FROM orders o join customers c on c.id = o.id_customer where o.order_date >= ?', [Date - 5000],
+    [ftDate]);
+  try
+    while not lDS.Eof do
+    begin
+      Log(Format('OrderDate: %12s - Customer: %s', [datetostr(lDS.FieldByName('order_date').AsDateTime),
+        lDS.FieldByName('description').AsString]));
+      lDS.Next;
+    end;
+  finally
+    lDS.Free;
+  end;
+
+  lDS := TMVCActiveRecord.SelectDataSet
+    ('SELECT * FROM orders o left join customers c on c.id = o.id_customer where o.order_date >= ? and c.id > ?',
+    [Date - 5000, 1],
+    [ftDate]);
+  try
+    while not lDS.Eof do
+    begin
+      Log(Format('OrderDate: %12s - Customer: %s', [datetostr(lDS.FieldByName('order_date').AsDateTime),
+        lDS.FieldByName('description').AsString]));
+      lDS.Next;
+    end;
+  finally
+    lDS.Free;
+  end;
+
   Log('** GetFirstByWhere');
   lCustomer := TMVCActiveRecord.GetFirstByWhere<TCustomer>('id > ?', [1]);
   try
@@ -561,8 +733,23 @@ begin
     lCustomer.Free;
   end;
 
+  lCustomer := TMVCActiveRecord.GetFirstByWhere<TCustomer>('id > ?', [1], [ftInteger]);
+  try
+    Log(Format('%8.5s - %s', [lCustomer.Code.ValueOrDefault, lCustomer.CompanyName.ValueOrDefault]));
+    lID := lCustomer.ID;
+  finally
+    lCustomer.Free;
+  end;
+
   Log('** GetOneByWhere');
   lCustomer := TMVCActiveRecord.GetOneByWhere<TCustomer>('id = ?', [lID.Value]);
+  try
+    Log(Format('%8.5s - %s', [lCustomer.Code.ValueOrDefault, lCustomer.CompanyName.ValueOrDefault]));
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetOneByWhere<TCustomer>('id = ?', [lID.Value], [ftInteger]);
   try
     Log(Format('%8.5s - %s', [lCustomer.Code.ValueOrDefault, lCustomer.CompanyName.ValueOrDefault]));
   finally
@@ -638,6 +825,74 @@ begin
   end;
 end;
 
+procedure TMainForm.btnWithSpacesClick(Sender: TObject);
+var
+  lCustomer: TCustomerWithSpaces;
+  lID: Integer;
+  I: Integer;
+begin
+  Log('** Simple CRUD (table and fields with spaces) test');
+  Log('There are ' + TMVCActiveRecord.Count<TCustomerWithSpaces>().ToString + ' row/s for entity ' +
+    TCustomerWithSpaces.ClassName);
+  TMVCActiveRecord.DeleteAll(TCustomerWithSpaces);
+  Log('Deleting all entities ' + TCustomerWithSpaces.ClassName);
+  for I := 1 to 100 do
+  begin
+    lCustomer := TCustomerWithSpaces.Create;
+    try
+      lCustomer.ID := I;
+      // just for test!!
+      case I mod 3 of
+        0:
+          lCustomer.CompanyName := 'Google Inc.';
+        1:
+          lCustomer.CompanyName := 'bit Time Professionals';
+        2:
+          lCustomer.CompanyName := 'Walt Disney Corp.';
+      end;
+      lCustomer.City := 'Montain View, CA';
+      lCustomer.Note := 'Hello there!';
+      lCustomer.Insert;
+      lID := lCustomer.ID;
+      Log('Just inserted Customer ' + lID.ToString);
+    finally
+      lCustomer.Free;
+    end;
+  end;
+
+  Log('Now there are ' + TMVCActiveRecord.Count<TCustomerWithSpaces>().ToString + ' row/s for entity ' +
+    TCustomerWithSpaces.ClassName);
+  TMVCActiveRecord.DeleteRQL(TCustomerWithSpaces, 'lt(id,90)');
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithSpaces>(lID);
+  try
+    Assert(not lCustomer.Code.HasValue);
+    lCustomer.Code.Value := '5678';
+    lCustomer.Note := lCustomer.Note + sLineBreak + 'Code changed to 5678';
+    lCustomer.Update;
+    Log('Just updated Customer ' + lID.ToString);
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TCustomerWithSpaces.Create;
+  try
+    lCustomer.LoadByPK(lID);
+    lCustomer.Code.Value := '9012';
+    lCustomer.Update;
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithSpaces>(lID);
+  try
+    lCustomer.Delete;
+    Log('Just deleted Customer ' + lID.ToString);
+  finally
+    lCustomer.Free;
+  end;
+end;
+
 procedure TMainForm.FormDestroy(Sender: TObject);
 begin
   ActiveRecordConnectionsRegistry.RemoveDefaultConnection;
@@ -672,8 +927,7 @@ begin
       end;
     TRDBMSEngine.MSSQLServer:
       begin
-        // FDConnectionConfigU.CreatePostgresqlPrivateConnDef(True);
-        raise Exception.Create('This DEMO doesn''t support MSSQLServer (while the framework does)');
+        FDConnectionConfigU.CreateMSSQLServerPrivateConnDef(True);
       end;
   else
     raise Exception.Create('Unknown RDBMS');
@@ -690,6 +944,7 @@ begin
 {$ELSE}
   Caption := Caption + ' WITHOUT SEQUENCES';
 {$ENDIF}
+  btnWithSpaces.Enabled := ActiveRecordConnectionsRegistry.GetCurrentBackend = 'postgresql';
 end;
 
 procedure TMainForm.Log(const Value: string);

@@ -97,7 +97,7 @@ type
     [MVCProduces('text/plain', 'utf-8')]
     procedure TestConsumesProducesText;
 
-    [MVCPath('/testconsumejson')]
+    [MVCPath('/adapter/testconsumejson')]
     [MVCHTTPMethod([httpGET])]
     [MVCConsumes('application/json')]
     [MVCProduces('application/json', 'utf-8')]
@@ -180,6 +180,9 @@ type
     [MVCPath('/typed/ttime1/($value)')]
     procedure TestTypedActionTTime1(value: TTime);
 
+    [MVCPath('/typed/tguid1/($value)')]
+    procedure TestTypedActionTGuid1(value: TGUID);
+
     [MVCPath('/typed/booleans/($bool1)/($bool2)/($bool3)/($bool4)')]
     procedure TestTypedActionBooleans(bool1, bool2, bool3, bool4: Boolean);
 
@@ -221,6 +224,20 @@ type
     [MVCHTTPMethod([httpGET])]
     [MVCPath('/responses/nocontent')]
     procedure TestResponseNoContent;
+
+    [MVCHTTPMethod([httpGET])]
+    [MVCPath('/($projectid)')]
+    procedure GetProject;
+
+    [MVCHTTPMethod([httpGET])]
+    [MVCPath('/($projectid)/pictures/($imageuuid)')]
+    procedure GetImage;
+
+    { templates }
+    [MVCHTTPMethod([httpGET])]
+    [MVCPath('/website/list')]
+    procedure Tmpl_ListOfDataUsingDatasets;
+
   end;
 
   [MVCPath('/private')]
@@ -235,7 +252,7 @@ type
     procedure OnlyRole2;
   end;
 
-  [MVCPath('/fault')]
+  [MVCPath('/exception/fault')]
   TTestFaultController = class(TMVCController)
   public
     [MVCPath]
@@ -243,7 +260,7 @@ type
     constructor Create; override;
   end;
 
-  [MVCPath('/fault2')]
+  [MVCPath('/exception/fault2')]
   TTestFault2Controller = class(TTestFaultController)
   public
     [MVCPath]
@@ -263,7 +280,7 @@ uses
   MVCFramework.Serializer.Defaults,
   MVCFramework.DuckTyping,
   System.IOUtils,
-  System.Classes;
+  System.Classes, FireDAC.Comp.Client;
 
 { TTestServerController }
 
@@ -338,6 +355,16 @@ begin
   c.Path := '/usersettings4';
   c.Expires := 0;
 
+end;
+
+procedure TTestServerController.GetImage;
+begin
+  // do nothing
+end;
+
+procedure TTestServerController.GetProject;
+begin
+  // do nothing
 end;
 
 procedure TTestServerController.Login;
@@ -443,9 +470,13 @@ begin
 end;
 
 procedure TTestServerController.TestGetImagePng;
+var
+  lFName: string;
 begin
   ContentType := TMVCMediaType.IMAGE_PNG;
-  Render(TFile.OpenRead('..\..\sample.png'));
+  lFName := TPath.Combine(TPath.GetDirectoryName(ParamStr(0)), '..\..') + '\sample.png';
+  // Render(TFile.OpenRead('..\..\sample.png'));
+  Render(TFile.OpenRead(lFName));
 end;
 
 procedure TTestServerController.TestGetPersonByID;
@@ -590,17 +621,17 @@ end;
 
 procedure TTestServerController.TestResponseAccepted;
 begin
-  ResponseAccepted('http://pippo.it/1234', '1234', 'thisisthereason');
+  Render202Accepted('http://pippo.it/1234', '1234', 'thisisthereason');
 end;
 
 procedure TTestServerController.TestResponseCreated;
 begin
-  ResponseCreated('thisisthelocation', 'thisisthereason');
+  Render201Created('thisisthelocation', 'thisisthereason');
 end;
 
 procedure TTestServerController.TestResponseNoContent;
 begin
-  ResponseNoContent('thisisthereason');
+  Render204NoContent('thisisthereason');
 end;
 
 procedure TTestServerController.TestSerializeNullables;
@@ -681,7 +712,7 @@ end;
 procedure TTestServerController.TestTypedActionString1(value: string);
 begin
   ContentType := TMVCMediaType.TEXT_PLAIN;
-  Render(value + ' modified from server');
+  Render('*' + value + '*');
 end;
 
 procedure TTestServerController.TestTypedActionTDate1(value: TDate);
@@ -696,6 +727,12 @@ begin
   Render(DateTimeToISOTimeStamp(value) + ' modified from server');
 end;
 
+procedure TTestServerController.TestTypedActionTGuid1(value: TGUID);
+begin
+  ContentType := TMVCMediaType.TEXT_PLAIN;
+  Render(GuidToString(value) + ' modified from server');
+end;
+
 procedure TTestServerController.TestTypedActionBooleans(bool1, bool2, bool3, bool4: Boolean);
 begin
   ContentType := TMVCMediaType.TEXT_PLAIN;
@@ -707,6 +744,23 @@ procedure TTestServerController.TestTypedActionTTime1(value: TTime);
 begin
   ContentType := TMVCMediaType.TEXT_PLAIN;
   Render(TimeToISOTime(value) + ' modified from server');
+end;
+
+procedure TTestServerController.Tmpl_ListOfDataUsingDatasets;
+var
+  lDS: TFDMemTable;
+begin
+  lDS := TFDMemTable.Create(nil);
+  try
+    var lFName: string := TPath.Combine(TPath.GetDirectoryName(ParamStr(0)), '..\..') + '\customers.json';
+    lDS.LoadFromFile(lFName);
+    ViewDataset['customers'] := lDS;
+    ViewData['customers2'] := lDS;
+    LoadView(['dataset_list']);
+    RenderResponseStream;
+  finally
+    lDS.Free;
+  end;
 end;
 
 { TTestPrivateServerController }

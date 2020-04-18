@@ -44,6 +44,10 @@ type
     [Test]
     procedure TestCRUD;
     [Test]
+    procedure TestCRUDStringPK;
+    [Test]
+    procedure TestSelectWithExceptions;
+    [Test]
     procedure TestStore;
     [Test]
     procedure TestLifeCycle;
@@ -59,13 +63,13 @@ implementation
 
 uses
   System.Classes, System.IOUtils, BOs, MVCFramework.ActiveRecord,
-  System.SysUtils, System.Threading, System.Generics.Collections;
+  System.SysUtils, System.Threading, System.Generics.Collections, Data.DB;
 
 const
   CON_DEF_NAME = 'SQLITECONNECTION';
 
 var
-  GDBFileName: String = '';
+  GDBFileName: string = '';
 
 procedure CreateSqlitePrivateConnDef(AIsPooled: boolean);
 var
@@ -144,11 +148,60 @@ begin
   lCustomer := TMVCActiveRecord.GetByPK<TCustomer>(lID, False);
   Assert.IsNull(lCustomer);
 
-  Assert.WillRaise(
-    procedure
-    begin
-      TMVCActiveRecord.GetByPK<TCustomer>(lID, True);
-    end, EMVCActiveRecordNotFound);
+  lCustomer := TMVCActiveRecord.GetOneByWhere<TCustomer>('id = ?', [lID], [ftInteger], False);
+  Assert.IsNull(lCustomer);
+
+end;
+
+procedure TTestActiveRecord.TestCRUDStringPK;
+var
+  lCustomer: TCustomerWithCode;
+begin
+  Assert.AreEqual(Int64(0), TMVCActiveRecord.Count<TCustomerWithCode>());
+  lCustomer := TCustomerWithCode.Create;
+  try
+    lCustomer.Code := '1000';
+    lCustomer.CompanyName := 'bit Time Professionals';
+    lCustomer.City := 'Rome, IT';
+    lCustomer.Note := 'note1';
+    lCustomer.Insert;
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithCode>('1000');
+  try
+    Assert.IsFalse(lCustomer.Rating.HasValue);
+    lCustomer.Rating := 3;
+    lCustomer.Note := lCustomer.Note + 'noteupdated';
+    lCustomer.Update;
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithCode>('1000');
+  try
+    Assert.AreEqual('1000', lCustomer.Code);
+    Assert.AreEqual(3, lCustomer.Rating.Value);
+    Assert.AreEqual('note1noteupdated', lCustomer.Note);
+    Assert.AreEqual('bit Time Professionals', lCustomer.CompanyName.Value);
+    Assert.AreEqual('Rome, IT', lCustomer.City);
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithCode>('1000');
+  try
+    lCustomer.Delete;
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomerWithCode>('1000', False);
+  Assert.IsNull(lCustomer);
+
+  lCustomer := TMVCActiveRecord.GetOneByWhere<TCustomerWithCode>('code = ?', ['1000'], [ftString], False);
+  Assert.IsNull(lCustomer);
 end;
 
 procedure TTestActiveRecord.TestLifeCycle;
@@ -188,7 +241,8 @@ begin
     Assert.AreEqual('OnBeforeLoad|MapDatasetToObject|OnAfterLoad', lCustomer.GetHistory);
     lCustomer.ClearHistory;
     lCustomer.Delete;
-    Assert.AreEqual('OnBeforeDelete|OnBeforeExecuteSQL|MapObjectToParams|OnAfterDelete', lCustomer.GetHistory);
+    Assert.AreEqual('OnValidation|OnBeforeDelete|OnBeforeExecuteSQL|MapObjectToParams|OnAfterDelete',
+      lCustomer.GetHistory);
   finally
     lCustomer.Free;
   end;
@@ -303,6 +357,60 @@ begin
   Assert.AreEqual(Int64(0), TMVCActiveRecord.Count<TCustomer>(RQL1));
 end;
 
+procedure TTestActiveRecord.TestSelectWithExceptions;
+var
+  lCustomer: TCustomer;
+  lID: Integer;
+begin
+  lID := 1000;
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomer>(lID, False);
+  try
+    if Assigned(lCustomer) then
+    begin
+      lCustomer.Delete;
+    end;
+  finally
+    lCustomer.Free;
+  end;
+
+  lCustomer := TMVCActiveRecord.GetByPK<TCustomer>(lID, False);
+  Assert.IsNull(lCustomer);
+
+  lCustomer := TMVCActiveRecord.GetOneByWhere<TCustomer>('id = ?', [lID], [ftInteger], False);
+  Assert.IsNull(lCustomer);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      TMVCActiveRecord.GetByPK<TCustomer>(lID, True);
+    end, EMVCActiveRecordNotFound);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      TMVCActiveRecord.GetOneByWhere<TCustomer>('id = ?', [lID], [ftInteger], True);
+    end, EMVCActiveRecordNotFound);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      TMVCActiveRecord.GetOneByWhere<TCustomer>('id = ?', [lID], True);
+    end, EMVCActiveRecordNotFound);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      TMVCActiveRecord.GetFirstByWhere<TCustomer>('id = ?', [lID], [ftInteger], True);
+    end, EMVCActiveRecordNotFound);
+
+  Assert.WillRaise(
+    procedure
+    begin
+      TMVCActiveRecord.GetFirstByWhere<TCustomer>('id = ?', [lID], True);
+    end, EMVCActiveRecordNotFound);
+
+end;
+
 procedure TTestActiveRecord.TestStore;
 var
   lCustomer: TCustomerWithNullablePK;
@@ -360,8 +468,8 @@ begin
           try
             lCustomer.Code := Format('%5.5d', [TThread.CurrentThread.ThreadID, I]);
             lCustomer.City := Cities[I mod Length(Cities)];
-            lCustomer.CompanyName := Format('%s %s %s', [lCustomer.City, Stuff[Random(High(Stuff) + 1)],
-              CompanySuffix[Random(High(CompanySuffix) + 1)]]);
+            lCustomer.CompanyName := Format('%s %s %s', [lCustomer.City, Stuff[Random(high(Stuff) + 1)],
+              CompanySuffix[Random(high(CompanySuffix) + 1)]]);
             lCustomer.Note := Stuff[I mod Length(Stuff)];
             lCustomer.Insert;
           finally
