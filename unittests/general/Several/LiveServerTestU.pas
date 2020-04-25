@@ -123,6 +123,8 @@ type
     [Test]
     procedure TestRenderStreamAndFreeWithOwnerTrue;
     [Test]
+    procedure TestObjectDict;
+    [Test]
     procedure TestGetImagePng;
     [Test]
     procedure TestProducesConsumes01;
@@ -202,6 +204,10 @@ type
     procedure TestDeserializeNullablesWithNulls;
     [Test]
     procedure TestSerializeAndDeserializeNullables;
+    [Test]
+    procedure TestSerializeAndDeserializeNullables_ISSUE_362;
+    [Test]
+    procedure TestSerializeAndDeserializeNullables_Passing_Integers_InsteadOf_Floats;
 
     // test responses objects
     [Test]
@@ -949,6 +955,54 @@ begin
   Assert.AreNotEqual('', r.HeaderValue('request_gen_time'));
 end;
 
+procedure TServerTest.TestObjectDict;
+var
+  lRes: IRESTResponse;
+  lJSON: TJSONObject;
+begin
+  lRes := RESTClient.doGET('/objectdict', []);
+  Assert.areEqual<Integer>(HTTP_STATUS.OK, lRes.ResponseCode, lRes.BodyAsString);
+  lJSON := StrToJSONObject(lRes.BodyAsString);
+  try
+    Assert.isTrue(lJSON.Contains('ncCamelCase_Single'), lJSON.ToJSON());
+    Assert.isTrue(lJSON.Contains('ncLowerCase_Single'), lJSON.ToJSON());
+    Assert.isTrue(lJSON.Contains('ncPascalCase_Single'), lJSON.ToJSON());
+    Assert.isTrue(lJSON.Contains('ncUpperCase_Single'), lJSON.ToJSON());
+
+    Assert.isTrue(lJSON.Contains('ncCamelCase_List'), lJSON.ToJSON());
+    Assert.isTrue(lJSON.Contains('ncLowerCase_List'), lJSON.ToJSON());
+    Assert.isTrue(lJSON.Contains('ncPascalCase_List'), lJSON.ToJSON());
+    Assert.isTrue(lJSON.Contains('ncUpperCase_List'), lJSON.ToJSON());
+
+    Assert.areEqual(jdtObject, lJSON.Types['ncCamelCase_Single']);
+    Assert.areEqual(jdtObject, lJSON.Types['ncLowerCase_Single']);
+    Assert.areEqual(jdtObject, lJSON.Types['ncPascalCase_Single']);
+    Assert.areEqual(jdtObject, lJSON.Types['ncUpperCase_Single']);
+
+    Assert.isTrue(lJSON.O['ncCamelCase_Single'].Contains('custNo'), lJSON.O['ncCamelCase_Single'].ToJSON());
+    Assert.isTrue(lJSON.O['ncLowerCase_Single'].Contains('cust_no'), lJSON.O['ncLowerCase_Single'].ToJSON());
+    Assert.isTrue(lJSON.O['ncPascalCase_Single'].Contains('CustNo'), lJSON.O['ncPascalCase_Single'].ToJSON());
+    Assert.isTrue(lJSON.O['ncUpperCase_Single'].Contains('CUST_NO'), lJSON.O['ncUpperCase_Single'].ToJSON());
+
+    Assert.areEqual(jdtArray, lJSON.Types['ncCamelCase_List']);
+    Assert.areEqual(jdtArray, lJSON.Types['ncLowerCase_List']);
+    Assert.areEqual(jdtArray, lJSON.Types['ncPascalCase_List']);
+    Assert.areEqual(jdtArray, lJSON.Types['ncUpperCase_List']);
+
+    Assert.isTrue(lJSON.A['ncCamelCase_List'][0].ObjectValue.Contains('custNo'),
+      lJSON.A['ncCamelCase_List'][0].ObjectValue.ToJSON());
+    Assert.isTrue(lJSON.A['ncLowerCase_List'][0].ObjectValue.Contains('cust_no'),
+      lJSON.A['ncLowerCase_List'][0].ObjectValue.ToJSON());
+    Assert.isTrue(lJSON.A['ncPascalCase_List'][0].ObjectValue.Contains('CustNo'),
+      lJSON.A['ncPascalCase_List'][0].ObjectValue.ToJSON());
+    Assert.isTrue(lJSON.A['ncUpperCase_List'][0].ObjectValue.Contains('CUST_NO'),
+      lJSON.A['ncUpperCase_List'][0].ObjectValue.ToJSON());
+
+  finally
+    lJSON.Free;
+  end;
+end;
+
 // procedure TServerTest.TestPATCHWithParamsAndJSONBody;
 // var
 // r: IRESTResponse;
@@ -1395,6 +1449,65 @@ begin
   end;
 end;
 
+procedure TServerTest.TestSerializeAndDeserializeNullables_ISSUE_362;
+const
+  JSON1: string = '{"f_int2":2,"f_int4":4,"f_int8":8,"f_string":"0123456789","f_bool":true, ' +
+    '"f_date":"2011-11-17","f_time":"12:24:36","f_datetime":"2011-11-17T12:24:36.048Z",' +
+    '"f_float4":2.5,"f_float8":1.25,"f_currency":98765.4321,"f_blob":"0123456789"}';
+  JSON2: string = '{"f_int2":2,"f_int4":4,"f_int8":8,"f_string":"0123456789","f_bool":true, ' +
+    '"f_date":"2011-11-17","f_time":"12:24:36","f_datetime":"2011-11-17T12:24:36.048Z",' +
+    '"f_float4":2,"f_float8":3,"f_currency":4,"f_blob":"0123456789"}';
+var
+  lSer: TMVCJsonDataObjectsSerializer;
+  lNullableTest: TNullablesTest;
+begin
+  lSer := TMVCJsonDataObjectsSerializer.Create;
+  try
+    lNullableTest := TNullablesTest.Create();
+    try
+      lSer.DeserializeObject(JSON1, lNullableTest);
+    finally
+      lNullableTest.Free;
+    end;
+    lNullableTest := TNullablesTest.Create();
+    try
+      { in this case nullable floats type actually contains integers... }
+      lSer.DeserializeObject(JSON2, lNullableTest);
+    finally
+      lNullableTest.Free;
+    end;
+    Assert.Pass();
+  finally
+    lSer.Free;
+  end;
+end;
+
+procedure TServerTest.TestSerializeAndDeserializeNullables_Passing_Integers_InsteadOf_Floats;
+const
+  JSON1: string = '{"f_int2":2,"f_int4":4,"f_int8":8,"f_string":"0123456789","f_bool":true, ' +
+    '"f_date":"2011-11-17","f_time":"12:24:36","f_datetime":"2011-11-17T12:24:36.048Z",' +
+    '"f_float4_not_null":1234,"f_float8_not_null":2345, ' +
+    '"f_float4":2.5,"f_float8":1.25,"f_currency":98765.4321,"f_blob":"0123456789"}';
+var
+  lSer: TMVCJsonDataObjectsSerializer;
+  lNullableTest: TNullablesTest;
+begin
+  lSer := TMVCJsonDataObjectsSerializer.Create;
+  try
+    lNullableTest := TNullablesTest.Create();
+    try
+      { in this case not nullable floats type actually contains integers... }
+      lSer.DeserializeObject(JSON1, lNullableTest);
+      Assert.areEqual(1234, lNullableTest.f_float4_not_null, 0.0001);
+      Assert.areEqual(2345, lNullableTest.f_float8_not_null, 0.0001);
+    finally
+      lNullableTest.Free;
+    end;
+  finally
+    lSer.Free;
+  end;
+end;
+
 procedure TServerTest.TestSession;
 var
   c1: TRESTClient;
@@ -1613,21 +1726,23 @@ var
   lRes: IRESTResponse;
 begin
   lRes := RESTClient.Accept(TMVCMediaType.TEXT_PLAIN).doGET('/website/list', []);
-  var lLines := lRes.BodyAsString.Split([sLineBreak]);
+  Assert.areEqual(HTTP_STATUS.OK, lRes.ResponseCode, lRes.BodyAsString);
+  var
+  lLines := lRes.BodyAsString.Split([sLineBreak]);
   var lCount: Integer := 1001;
   for var lLine in lLines do
   begin
-    var lLinePieces := lLine.Split(['|']);
+    var
+    lLinePieces := lLine.Split(['|']);
     if Length(lLinePieces) = 1 then
     begin
       lCount := 1001;
       Continue;
     end;
-    Assert.AreEqual(9, Length(lLinePieces));
-    Assert.AreEqual(lCount, lLinePieces[0].ToInteger);
+    Assert.areEqual(9, Length(lLinePieces));
+    Assert.areEqual(lCount, lLinePieces[0].ToInteger);
     Inc(lCount);
   end;
-  Assert.areEqual(HTTP_STATUS.OK, lRes.ResponseCode);
 end;
 
 procedure TServerTest.TestWrongJSONBody;
