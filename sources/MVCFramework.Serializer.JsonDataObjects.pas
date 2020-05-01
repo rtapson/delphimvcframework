@@ -168,6 +168,11 @@ type
     procedure AfterConstruction; override;
   end;
 
+  TJDOLinks = class(TMVCLinks)
+  public
+    procedure FillJSONArray(const AJsonArray: TJsonArray);
+  end;
+
 procedure TValueToJsonElement(const Value: TValue; const JSON: TJDOJsonObject; const KeyName: string);
 function StrToJSONObject(const AValue: string): TJDOJsonObject;
 procedure JsonObjectToObject(const AJsonObject: TJDOJsonObject; const AObject: TObject;
@@ -188,13 +193,7 @@ uses
   MVCFramework.DataSet.Utils,
   MVCFramework.Nullables;
 
-type
-  TJDOLinks = class(TMVCLinks)
-  public
-    procedure FillJSONArray(const AJsonArray: TJsonArray);
-  end;
-
-  { TMVCJsonDataObjectsSerializer }
+{ TMVCJsonDataObjectsSerializer }
 
 procedure TMVCJsonDataObjectsSerializer.AfterConstruction;
 var
@@ -384,7 +383,7 @@ begin
 
     tkRecord:
       begin
-        if string(AValue.TypeInfo.Name).StartsWith('Nullable') then
+        if AValue.TypeInfo.NameFld.ToString.StartsWith('Nullable') then
         begin
           if TryNullableToJSON(AValue, AJsonObject, AName) then
           begin

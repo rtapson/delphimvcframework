@@ -76,6 +76,8 @@ type
     IMAGE_X_PNG = 'image/x-png';
     IMAGE_X_ICON = 'image/x-icon';
     IMAGE_PNG = 'image/png';
+    IMAGE_SVG_XML = 'image/svg+xml';
+    IMAGE_GIF = 'image/gif';
     APPLICATION_PDF = 'application/pdf';
     APPLICATION_X_PDF = 'application/x-pdf';
     WILDCARD = '*/*';
@@ -141,22 +143,19 @@ type
   TMVCConfigKey = record
   public const
     SessionTimeout = 'sessiontimeout';
-    DocumentRoot = 'document_root';
     ViewPath = 'view_path';
     DefaultContentType = 'default_content_type';
     DefaultContentCharset = 'default_content_charset';
     DefaultViewFileExtension = 'default_view_file_extension';
-    // ISAPIPath = 'isapi_path';
     PathPrefix = 'pathprefix';
     AllowUnhandledAction = 'allow_unhandled_action';
     ServerName = 'server_name';
     ExposeServerSignature = 'server_signature';
-    IndexDocument = 'index_document';
     SessionType = 'session_type';
-    FallbackResource = 'fallback_resource';
     MaxEntitiesRecordCount = 'max_entities_record_count';
     MaxRequestSize = 'max_request_size'; // bytes
     HATEOSPropertyName = 'hateos';
+    LoadSystemControllers = 'load_system_controllers';
   end;
 
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
@@ -615,8 +614,7 @@ const
   MVC_HTTP_METHODS_WITH_CONTENT: TMVCHTTPMethods = [httpPOST, httpPUT, httpPATCH];
 
 const
-  MVC_COMPRESSION_TYPE_AS_STRING: array [TMVCCompressionType] of string = ('none',
-    'deflate', 'gzip');
+  MVC_COMPRESSION_TYPE_AS_STRING: array [TMVCCompressionType] of string = ('none', 'deflate', 'gzip');
   MVC_COMPRESSION_ZLIB_WINDOW_BITS: array [TMVCCompressionType] of Integer = (0, -15, 31);
   // WindowBits: http://zlib.net/manual.html#Advanced
 
