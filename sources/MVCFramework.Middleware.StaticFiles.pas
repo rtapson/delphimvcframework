@@ -40,7 +40,7 @@ type
     /// <summary>
     /// URL segment that represents the path to static files
     /// </summary>
-    STATIC_FILES_PATH = '/';
+    STATIC_FILES_PATH = '/static';
 
     /// <summary>
     /// Physical path of the root folder that contains the static files
@@ -91,7 +91,8 @@ implementation
 
 uses
   System.SysUtils,
-  System.IOUtils;
+  System.NetEncoding,
+  System.IOUtils, System.Classes;
 
 { TMVCStaticFilesMiddleware }
 
@@ -123,9 +124,8 @@ constructor TMVCStaticFilesMiddleware.Create(
   const AStaticFilesCharset: string = TMVCStaticFilesDefaults.STATIC_FILES_CONTENT_CHARSET);
 begin
   inherited Create;
-
   fStaticFilesPath := AStaticFilesPath;
-  fDocumentRoot := ADocumentRoot;
+  fDocumentRoot := TPath.Combine(AppPath, ADocumentRoot);
   fIndexDocument := AIndexDocument;
   fStaticFilesCharset := AStaticFilesCharset;
   fSPAWebAppSupport := ASPAWebAppSupport;
@@ -175,6 +175,23 @@ begin
     Exit;
   end;
 
+  {
+    If user ask for
+    www.server.it/folder
+    the browser is redirected to
+    www.server.it/folder/
+  }
+  if SameText(lPathInfo, fStaticFilesPath) then
+  begin
+    if (not lPathInfo.EndsWith('/')) and (not fIndexDocument.IsEmpty) then
+    begin
+      AContext.Response.StatusCode := HTTP_STATUS.MovedPermanently;
+      AContext.Response.CustomHeaders.Values['Location'] := lPathInfo + '/';
+      AHandled := True;
+      Exit;
+    end;
+  end;
+
   if not((fStaticFilesPath = '/') or (fStaticFilesPath = '')) then
   begin
     lPathInfo := lPathInfo.Remove(0, fStaticFilesPath.Length);
@@ -193,6 +210,13 @@ begin
   begin
     AHandled := SendStaticFileIfPresent(AContext, lFileName);
   end;
+
+  // if (not AHandled) and lPathInfo.EndsWith('favicon.ico') then
+  // begin
+  // AContext.Response.SetContentStream(TBytesStream.Create(TNetEncoding.Base64.DecodeStringToBytes(DMVC_FAVICON)),
+  // TMVCMediaType.IMAGE_X_ICON);
+  // AHandled := True;
+  // end;
 
   if (not AHandled) and fSPAWebAppSupport and AContext.Request.ClientPreferHTML and (not fIndexDocument.IsEmpty) then
   begin

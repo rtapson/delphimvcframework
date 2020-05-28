@@ -33,16 +33,6 @@ uses
   System.DateUtils,
   System.Hash;
 
-const
-
-{$IFDEF LINUX_SERVER}
-  TEST_SERVER_ADDRESS = '192.168.1.8';
-
-{$ELSE}
-  TEST_SERVER_ADDRESS = '127.0.0.1';
-
-{$ENDIF}
-
 
 type
 
@@ -51,10 +41,9 @@ type
     RESTClient: TRESTClient;
     procedure DoLoginWith(UserName: string);
     procedure DoLogout;
-
   public
-    [SetUp]
-    procedure SetUp;
+    [Setup]
+    procedure Setup; virtual;
     [TearDown]
     procedure TearDown;
 
@@ -62,8 +51,6 @@ type
 
   [TestFixture]
   TServerTest = class(TBaseServerTest)
-  private
-
   public
     [Test]
     [TestCase('request url /fault', '/exception/fault')]
@@ -220,7 +207,12 @@ type
     // test web server
     [Test]
     procedure TestDirectoryTraversal1;
-
+    [Test]
+    procedure TestDirectoryTraversal2;
+    [Test]
+    procedure TestDirectoryRedirect;
+    [Test]
+    procedure TestSPASupport;
     // test server side views
     [Test]
     procedure TestViewDataViewDataSet;
@@ -228,13 +220,13 @@ type
   end;
 
   [TestFixture]
-  TJSONRPCServerTest = class(TBaseServerTest)
+  TJSONRPCServerTest = class(TObject)
   protected
     FExecutor: IMVCJSONRPCExecutor;
     FExecutor2: IMVCJSONRPCExecutor;
   public
-    [SetUp]
-    procedure SetUp;
+    [Setup]
+    procedure Setup;
     [Test]
     procedure TestRequestWithoutParams;
     [Test]
@@ -242,9 +234,17 @@ type
     [Test]
     procedure TestRequestWithParams_I_I_ret_I;
     [Test]
+    procedure TestRequestWithNamedParams_I_I_ret_I;
+    [Test]
     procedure TestRequestWithParams_I_I_I_ret_O;
     [Test]
+    procedure TestRequestWithNamedParams_I_I_I_ret_O;
+    [Test]
+    procedure TestRequestWithWrongNamedParams;
+    [Test]
     procedure TestRequest_S_I_ret_S;
+    [Test]
+    procedure TestRequest_NamedParams_S_I_ret_S;
     [Test]
     procedure TestRequestWithParams_I_I_ret_A;
     [Test]
@@ -273,11 +273,15 @@ uses
   MVCFramework.Serializer.Intf
 {$IFDEF MSWINDOWS}
     ,
-  MVCFramework.Serializer.JsonDataObjects.OptionalCustomTypes
-    ,
+  MVCFramework.Serializer.JsonDataObjects.OptionalCustomTypes,
   Vcl.Graphics
 {$ENDIF}
-    ;
+    , TestConstsU;
+
+function GetServer: String;
+begin
+  Result := 'http://' + TEST_SERVER_ADDRESS + ':9999';
+end;
 
 { TServerTest }
 
@@ -289,7 +293,7 @@ begin
   Assert.isTrue(res.ResponseCode = HTTP_STATUS.OK, 'Logout Failed');
 end;
 
-procedure TBaseServerTest.SetUp;
+procedure TBaseServerTest.Setup;
 begin
   inherited;
   RESTClient := TRESTClient.Create(TEST_SERVER_ADDRESS, 9999);
@@ -689,8 +693,7 @@ begin
     lCustomer.Logo.SaveToFile('pippo_client_before_send.bmp');
     lSer := GetDefaultSerializer;
     RegisterOptionalCustomTypesSerializers(lSer);
-    r := RESTClient.Accept(TMVCMediaType.APPLICATION_JSON).doPOST('/customerecho', [],
-      lSer.SerializeObject(lCustomer));
+    r := RESTClient.Accept(TMVCMediaType.APPLICATION_JSON).doPOST('/customerecho', [], lSer.SerializeObject(lCustomer));
   finally
     lCustomer.Free;
   end;
@@ -1176,9 +1179,8 @@ var
 begin
   JSON := System.JSON.TJSONObject.Create;
   JSON.AddPair('client', 'clientdata');
-  r := RESTClient
-    .Header(TMVCConstants.X_HTTP_Method_Override, 'PUT')
-    .doPOST('/echo', ['1', '2', '3'], TSystemJSON.JSONValueToString(JSON));
+  r := RESTClient.Header(TMVCConstants.X_HTTP_Method_Override, 'PUT').doPOST('/echo', ['1', '2', '3'],
+    TSystemJSON.JSONValueToString(JSON));
 
   JSON := TSystemJSON.StringAsJSONObject(r.BodyAsString);
   try
@@ -1381,29 +1383,62 @@ begin
   end;
 end;
 
+procedure TServerTest.TestDirectoryRedirect;
+var
+  lRes: IRESTResponse;
+begin
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/static/', []);
+  Assert.areEqual(200, lRes.ResponseCode, '/static/');
+
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/static', []);
+  Assert.areEqual(301, lRes.ResponseCode, '/static');
+  Assert.areEqual('/static/', lRes.HeaderValue('Location'), 'Wrong redirect');
+end;
+
 procedure TServerTest.TestDirectoryTraversal1;
 var
   lRes: IRESTResponse;
   I: Integer;
   lUrl: string;
 begin
-  lRes := RESTClient
-    .Accept(TMVCMediaType.TEXT_HTML)
-    .doGET('/index.html', []);
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/index.html', []);
   Assert.areEqual(200, lRes.ResponseCode);
 
-  lRes := RESTClient
-    .Accept(TMVCMediaType.TEXT_HTML)
-    .doGET('/..\donotdeleteme.txt', []);
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/..\donotdeleteme.txt', []);
   Assert.areEqual(404, lRes.ResponseCode);
 
   lUrl := 'Windows\win.ini';
   for I := 1 to 20 do
   begin
     lUrl := '..\' + lUrl;
-    lRes := RESTClient
-      .Accept(TMVCMediaType.TEXT_HTML)
-      .doGET('/' + lUrl, []);
+    lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/' + lUrl, []);
+    Assert.areEqual(404, lRes.ResponseCode, 'Fail with: ' + '/' + lUrl);
+  end;
+end;
+
+procedure TServerTest.TestDirectoryTraversal2;
+var
+  lRes: IRESTResponse;
+  I: Integer;
+  lUrl: string;
+begin
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/static/index.html', []);
+  Assert.areEqual(200, lRes.ResponseCode, '/static/index.html');
+
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/static.html', []);
+  Assert.areEqual(200, lRes.ResponseCode, '/static.html');
+
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/static/..\..\donotdeleteme.txt', []);
+  Assert.areEqual(404, lRes.ResponseCode);
+
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/static/../../donotdeleteme.txt', []);
+  Assert.areEqual(404, lRes.ResponseCode);
+
+  lUrl := 'Windows\win.ini';
+  for I := 1 to 30 do
+  begin
+    lUrl := '..\' + lUrl;
+    lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/' + lUrl, []);
     Assert.areEqual(404, lRes.ResponseCode, 'Fail with: ' + '/' + lUrl);
   end;
 end;
@@ -1542,6 +1577,34 @@ procedure TServerTest.TestSessionWithLogin;
 begin
   DoLoginWith('daniele');
   DoLogout;
+end;
+
+procedure TServerTest.TestSPASupport;
+var
+  lRes: IRESTResponse;
+  I: Integer;
+  lUrl: string;
+begin
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/spa/index.html', []);
+  Assert.areEqual(200, lRes.ResponseCode);
+  Assert.Contains(lRes.BodyAsString, 'This is a TEXT file');
+
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/spa/', []);
+  Assert.areEqual(200, lRes.ResponseCode, '/static/');
+  Assert.Contains(lRes.BodyAsString, 'This is a TEXT file');
+
+  lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/spa/pippo/pluto/paperino', []);
+  Assert.areEqual(200, lRes.ResponseCode, '/spa/pippo/pluto/paperino');
+  Assert.Contains(lRes.BodyAsString, 'This is a TEXT file');
+
+  lUrl := 'Windows\win.ini';
+  for I := 1 to 30 do
+  begin
+    lUrl := '..\' + lUrl;
+    lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).doGET('/spa/' + lUrl, []);
+    Assert.areEqual(200, lRes.ResponseCode);
+    Assert.Contains(lRes.BodyAsString, 'This is a TEXT file');
+  end;
 end;
 
 procedure TServerTest.TestStringDictionary;
@@ -1729,7 +1792,8 @@ begin
   Assert.areEqual(HTTP_STATUS.OK, lRes.ResponseCode, lRes.BodyAsString);
   var
   lLines := lRes.BodyAsString.Split([sLineBreak]);
-  var lCount: Integer := 1001;
+  var
+    lCount: Integer := 1001;
   for var lLine in lLines do
   begin
     var
@@ -1808,10 +1872,10 @@ end;
 
 { TJSONRPCServerTest }
 
-procedure TJSONRPCServerTest.SetUp;
+procedure TJSONRPCServerTest.Setup;
 begin
-  FExecutor := TMVCJSONRPCExecutor.Create('http://localhost:9999/jsonrpc', false);
-  FExecutor2 := TMVCJSONRPCExecutor.Create('http://localhost:9999/jsonrpcclass', false);
+  FExecutor := TMVCJSONRPCExecutor.Create('http://' + TEST_SERVER_ADDRESS + ':9999/jsonrpc', false);
+  FExecutor2 := TMVCJSONRPCExecutor.Create('http://' + TEST_SERVER_ADDRESS + ':9999/jsonrpcclass', false);
 end;
 
 procedure TJSONRPCServerTest.TestRequestToNotFoundMethod;
@@ -1853,6 +1917,65 @@ begin
   Assert.areEqual(2000, lYear);
 end;
 
+procedure TJSONRPCServerTest.TestRequestWithWrongNamedParams;
+var
+  lReq: IJSONRPCRequest;
+  lRPCResp: IJSONRPCResponse;
+begin
+  lReq := TJSONRPCRequest.Create;
+  lReq.Method := 'add';
+  lReq.Params.AddByName('wrongname1', 3);
+  lReq.Params.AddByName('wrongname2', 4);
+  lReq.Params.AddByName('wrongname3', 5);
+  lReq.RequestID := 1234;
+
+  lRPCResp := FExecutor.ExecuteRequest(lReq);
+  Assert.isTrue(lRPCResp.IsError);
+  Assert.Contains(lRPCResp.Error.ErrMessage, 'cannot map all parameter', true);
+end;
+
+procedure TJSONRPCServerTest.TestRequestWithNamedParams_I_I_I_ret_O;
+var
+  lReq: IJSONRPCRequest;
+  lRPCResp: IJSONRPCResponse;
+  lS: string;
+begin
+  lReq := TJSONRPCRequest.Create;
+  lReq.Method := 'add';
+  lReq.Params.AddByName('value1', 3);
+  lReq.Params.AddByName('value2', 4);
+  lReq.Params.AddByName('value3', 5);
+  lReq.RequestID := 1234;
+
+  lRPCResp := FExecutor.ExecuteRequest(lReq);
+  lS := (lRPCResp.Result.AsObject as TJDOJsonObject).ToJSON();
+  Assert.areEqual(12, TJDOJsonObject(lRPCResp.Result.AsObject).I['res']);
+
+  lRPCResp := FExecutor2.ExecuteRequest(lReq);
+  lS := (lRPCResp.Result.AsObject as TJDOJsonObject).ToJSON();
+  Assert.areEqual(12, TJDOJsonObject(lRPCResp.Result.AsObject).I['res']);
+end;
+
+procedure TJSONRPCServerTest.TestRequestWithNamedParams_I_I_ret_I;
+var
+  lReq: IJSONRPCRequest;
+  lResp: IJSONRPCResponse;
+begin
+  lReq := TJSONRPCRequest.Create;
+  lReq.RequestID := 1234;
+  lReq.Method := 'subtract';
+  lReq.Params.AddByName('Value1', 18);
+  lReq.Params.AddByName('Value2', 8);
+
+  lResp := FExecutor.ExecuteRequest(lReq);
+  Assert.areEqual(10, lResp.Result.AsInteger);
+  Assert.areEqual(1234, lResp.RequestID.AsInteger);
+
+  lResp := FExecutor2.ExecuteRequest(lReq);
+  Assert.areEqual(10, lResp.Result.AsInteger);
+  Assert.areEqual(1234, lResp.RequestID.AsInteger);
+end;
+
 procedure TJSONRPCServerTest.TestRequestWithoutParams;
 var
   lReq: IJSONRPCNotification;
@@ -1874,6 +1997,7 @@ begin
   lReq.Method := 'subtract';
   lReq.Params.Add(18);
   lReq.Params.Add(8);
+
   lResp := FExecutor.ExecuteRequest(lReq);
   Assert.areEqual(10, lResp.Result.AsInteger);
   Assert.areEqual(1234, lResp.RequestID.AsInteger);
@@ -1937,6 +2061,24 @@ begin
   lRPCResp := FExecutor2.ExecuteRequest(lReq);
   lS := (lRPCResp.Result.AsObject as TJDOJsonObject).ToJSON();
   Assert.areEqual(12, TJDOJsonObject(lRPCResp.Result.AsObject).I['res']);
+end;
+
+procedure TJSONRPCServerTest.TestRequest_NamedParams_S_I_ret_S;
+var
+  lReq: IJSONRPCRequest;
+  lRPCResp: IJSONRPCResponse;
+begin
+  lReq := TJSONRPCRequest.Create;
+  lReq.Method := 'MultiplyString';
+  lReq.Params.AddByName('aString', 'Daniele');
+  lReq.Params.AddByName('Multiplier', 4);
+  lReq.RequestID := 1234;
+  lRPCResp := FExecutor.ExecuteRequest(lReq);
+  Assert.isFalse(lRPCResp.IsError);
+  Assert.areEqual('DanieleDanieleDanieleDaniele', lRPCResp.Result.AsString);
+
+  lRPCResp := FExecutor2.ExecuteRequest(lReq);
+  Assert.areEqual('DanieleDanieleDanieleDaniele', lRPCResp.Result.AsString);
 end;
 
 procedure TJSONRPCServerTest.TestRequest_S_I_ret_S;

@@ -2012,6 +2012,7 @@ begin
     AConfigAction(FConfig);
     LogExitMethod('Custom configuration method');
   end;
+  FConfig.Freeze;
   SaveCacheConfigValues;
   RegisterDefaultsSerializers;
   LoadSystemControllers;
@@ -2063,7 +2064,7 @@ begin
 
   if ARequest.ContentLength > FConfigCache_MaxRequestSize then
   begin
-    raise EMVCException.CreateFmt('Request size exceeded the max allowed size [%d KiB] (1)',
+    raise EMVCException.CreateFmt(HTTP_STATUS.RequestEntityTooLarge, 'Request size exceeded the max allowed size [%d KiB] (1)',
       [(FConfigCache_MaxRequestSize div 1024)]);
   end;
 
@@ -2073,7 +2074,7 @@ begin
   // Double check for malicious content-length header
   if ARequest.ContentLength > FConfigCache_MaxRequestSize then
   begin
-    raise EMVCException.CreateFmt('Request size exceeded the max allowed size [%d KiB] (2)',
+    raise EMVCException.CreateFmt(HTTP_STATUS.RequestEntityTooLarge, 'Request size exceeded the max allowed size [%d KiB] (2)',
       [(FConfigCache_MaxRequestSize div 1024)]);
   end;
 {$ENDIF}
@@ -2658,6 +2659,13 @@ begin
       on E: Exception do
       begin
         Log.ErrorFmt('[%s] %s', [E.Classname, E.Message], LOGGERPRO_TAG);
+
+        AResponse.StatusCode:= HTTP_STATUS.InternalServerError; // default is Internal Server Error
+        if E is EMVCException then
+        begin
+            AResponse.StatusCode:= (E as EMVCException).HttpErrorCode;
+        end;
+
         AResponse.Content := E.Message;
         AResponse.SendResponse;
         AHandled := True;
@@ -3097,6 +3105,9 @@ begin
     FContext.Response.CustomHeaders.AddPair('location', Location);
   end;
   ResponseStatus(HTTP_STATUS.Created, Reason);
+  {$IF CompilerVersion >= 34}
+  Render(''); //in 10.4 INDY requires something on the content
+  {$ENDIF}
 end;
 
 procedure TMVCRenderer.Render204NoContent(const Location, Reason: string);
