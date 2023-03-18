@@ -1,4 +1,4 @@
-program renders_spring4d_nullables;
+program renders_aurelius_nullables;
 
  {$APPTYPE CONSOLE}
 
@@ -14,7 +14,7 @@ uses
   MainControllerU in 'MainControllerU.pas',
   WebModuleU in 'WebModuleU.pas' {MyWebModule: TWebModule},
   BusinessObjectsU in 'BusinessObjectsU.pas',
-  MVCFramework.NullableTypes.Spring in '..\..\sources\MVCFramework.NullableTypes.Spring.pas';
+  MVCFramework.NullableTypes.TMS.Aurelius in '..\..\sources\MVCFramework.NullableTypes.TMS.Aurelius.pas';
 
 {$R *.res}
 

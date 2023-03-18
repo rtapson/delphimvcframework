@@ -30,7 +30,7 @@ uses
   System.IOUtils,
   MVCFramework.Commons,
   MVCFramework.Middleware.Compression,
-  MVCFramework.NullableTypes.Spring,
+  MVCFramework.NullableTypes.TMS.Aurelius,
   MVCFramework.Middleware.StaticFiles,
   BusinessObjectsU;
 
@@ -65,8 +65,8 @@ begin
   // To enable compression (deflate, gzip) just add this middleware as the last one
   FMVC.AddMiddleware(TMVCCompressionMiddleware.Create);
 
-  //Enable Spring4D nullables support
-  RegisterSpringNullableTypeSerializersInSerializer(FMVC.Serializers.Items['application/json']);
+  //Enable Aurelius nullables support
+  RegisterAureliusNullableTypeSerializersInSerializer(FMVC.Serializers.Items['application/json']);
 end;
 
 procedure TMyWebModule.WebModuleDestroy(Sender: TObject);
