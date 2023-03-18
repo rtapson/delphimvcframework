@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -40,6 +40,7 @@ uses
   IdCoderMIME,
   IdContext,
   System.Generics.Collections,
+  MVCFramework.DuckTyping,
   JsonDataObjects;
 
 {$I dmvcframeworkbuildconsts.inc}
@@ -47,10 +48,12 @@ uses
 
 type
 
-  TMVCHTTPMethodType = (httpGET, httpPOST, httpPUT, httpDELETE, httpHEAD, httpOPTIONS, httpPATCH,
+  TMVCHTTPMethodType = (httpGET, httpPOST, httpPUT, httpDELETE, httpPATCH, httpHEAD, httpOPTIONS,
     httpTRACE);
 
   TMVCHTTPMethods = set of TMVCHTTPMethodType;
+
+  TMVCTransferProtocolSchemes = set of (psHTTP, psHTTPS);
 
   TMVCMediaType = record
   public const
@@ -116,12 +119,14 @@ type
     LAST_AUTHORIZATION_HEADER_VALUE = '__DMVC_LAST_AUTHORIZATION_HEADER_VALUE_';
     SSE_RETRY_DEFAULT = 100;
     SSE_LAST_EVENT_ID = 'Last-Event-ID';
-    URL_MAPPED_PARAMS_ALLOWED_CHARS = ' אטישעל''"@\[\]\{\}\(\)\=;&#\.:!\_,%\w\d\x2D\x3A';
+    URL_MAPPED_PARAMS_ALLOWED_CHARS = ' אטישעל''"@\[\]\{\}\(\)\=;&#\.:!\_,%\w\d\x2D\x3A\$';
     OneMiB = 1048576;
     OneKiB = 1024;
     DEFAULT_MAX_REQUEST_SIZE = OneMiB * 5; // 5 MiB
     HATEOAS_PROP_NAME = 'links';
     X_HTTP_Method_Override = 'X-HTTP-Method-Override';
+    MAX_RECORD_COUNT = 100;
+    COPYRIGHT = 'Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team';
   end;
 
   HATEOAS = record
@@ -158,6 +163,8 @@ type
     HATEOSPropertyName = 'hateos';
     LoadSystemControllers = 'load_system_controllers';
   end;
+
+  TMVCHostingFrameworkType = (hftUnknown, hftIndy, hftApache, hftISAPI);
 
   // http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html
   HTTP_STATUS = record
@@ -311,6 +318,11 @@ type
     /// the commands will also fail with 424 (Failed Dependency).
     /// </summary>
     FailedDependency = 424;
+    /// <summary>
+    /// The 429 (Too Many Requests) status code indicates the user has sent too many requests
+    /// in a given amount of time ("rate limiting").
+    /// </summary>
+    TooManyRequests = 429;
     // Server Error 5xx
     /// <summary>
     /// 500 Internal Server Error
@@ -343,6 +355,11 @@ type
     /// request MUST NOT be repeated until it is requested by a separate user action.
     /// </summary>
     InsufficientStorage = 507;
+
+    /// <summary>
+    ///   Returns standard ReasonString for a given HTTP status code
+    /// </summary>
+    class function ReasonStringFor(const HTTPStatusCode: Integer): String; static;
   end;
 
   EMVCException = class(Exception)
@@ -350,12 +367,14 @@ type
     FHttpErrorCode: UInt16;
     FAppErrorCode: UInt16;
     FDetailedMessage: string;
+    FErrorItems: TArray<String>;
     procedure CheckHTTPErrorCode(const AHTTPErrorCode: UInt16);
   public
     constructor Create(const AMsg: string); overload; virtual;
     constructor Create(const AMsg: string; const ADetailedMessage: string;
       const AAppErrorCode: UInt16 = 0;
-      const AHTTPErrorCode: UInt16 = HTTP_STATUS.InternalServerError); overload; virtual;
+      const AHTTPErrorCode: UInt16 = HTTP_STATUS.InternalServerError;
+      const AErrorItems: TArray<String> = nil); overload; virtual;
     constructor Create(const AHTTPErrorCode: UInt16; const AMsg: string); overload; virtual;
     constructor Create(const AHTTPErrorCode: UInt16; const AAppErrorCode: Integer; const AMsg: string);
       overload; virtual;
@@ -364,6 +383,7 @@ type
     property HttpErrorCode: UInt16 read FHttpErrorCode;
     property DetailedMessage: string read FDetailedMessage write FDetailedMessage;
     property ApplicationErrorCode: UInt16 read FAppErrorCode write FAppErrorCode;
+    property ErrorItems: TArray<String> read FErrorItems;
   end;
 
   EMVCSessionExpiredException = class(EMVCException)
@@ -571,6 +591,7 @@ type
   TMVCFieldMap = record
     InstanceFieldName: string;
     DatabaseFieldName: string;
+    Alias: String; // allows to use "MVCNameAs" attribute in RQL queries
   end;
 
   TMVCCustomRouter = class abstract
@@ -580,13 +601,42 @@ type
 
   TMVCGuidHelper = record
   public
-    class function GuidFromString(const AGuidStr: string): TGUID; static;
+    class function StringToGUIDEx(const aGuidStr: string): TGUID; static; inline;
+    class function GUIDToStringEx(const aGuid: TGUID): string; static; inline;
+  end;
+
+  TMVCStringHelper = record
+  public
+    class function StartsText(const ASubText, AText: string): Boolean; static;
+    class function StartsWith(const ASubText, AText: string; AIgnoreCase: Boolean): Boolean; static;
   end;
 
   TMVCFieldsMapping = TArray<TMVCFieldMap>;
 
 {$SCOPEDENUMS ON}
   TMVCCompressionType = (ctNone, ctDeflate, ctGZIP);
+
+  TMVCHTTPStatusCode = record
+    Code: Integer;
+    ReasonString: String;
+  end;
+
+
+{ GENERIC TYPE ALIASES }
+TMVCListOfString = TList<string>;
+TMVCListOfInteger =  TList<Integer>;
+TMVCListOfBoolean = TList<Boolean>;
+TMVCListOfDouble =  TList<Double>;
+{ GENERIC TYPE ALIASES // END}
+
+{ GLOBAL CONFIG VARS }
+var
+  /// <summary>
+  /// When MVCSerializeNulls = True empty nullables and nil are serialized as json null.
+  /// When MVCSerializeNulls = False empty nullables and nil are not serialized at all.
+  /// </summary>
+  MVCSerializeNulls: Boolean = True;
+{ GLOBAL CONFIG VARS // END}
 
 function AppPath: string;
 function IsReservedOrPrivateIP(const AIP: string): Boolean; inline;
@@ -601,21 +651,28 @@ function URLSafeB64encode(const Value: string; IncludePadding: Boolean; AByteEnc
 function URLSafeB64encode(const Value: TBytes; IncludePadding: Boolean): string; overload;
 function URLSafeB64Decode(const Value: string; AByteEncoding: IIdTextEncoding = nil): string;
 
+function URLEncode(const Value: string): string; overload;
+function URLDecode(const Value: string): string;
+
+
 function ByteToHex(AInByte: Byte): string;
 function BytesToHex(ABytes: TBytes): string;
 procedure Base64StringToFile(const aBase64String, AFileName: string; const aOverwrite: Boolean = False);
+function StreamToBase64String(Source: TStream): string;
 function FileToBase64String(const FileName: string): string;
 
 procedure SplitContentMediaTypeAndCharset(const aContentType: string; var aContentMediaType: string;
   var aContentCharSet: string);
 function BuildContentType(const aContentMediaType: string; const aContentCharSet: string): string;
 
-function StrToJSONObject(const aString: String): TJsonObject;
-function StrToJSONArray(const aString: String): TJsonArray;
+function StrToJSONObject(const aString: String; ARaiseExceptionOnError: Boolean = False): TJsonObject;
+function StrToJSONArray(const aString: String; ARaiseExceptionOnError: Boolean = False): TJsonArray;
 
+function WrapAsList(const AObject: TObject; AOwnsObject: Boolean = False): IMVCList;
 
 { changing case }
 function CamelCase(const Value: string; const MakeFirstUpperToo: Boolean = False): string;
+function SnakeCase(const Value: string): string;
 
 const
   MVC_HTTP_METHODS_WITHOUT_CONTENT: TMVCHTTPMethods = [httpGET, httpDELETE, httpHEAD, httpOPTIONS];
@@ -630,13 +687,83 @@ var
   gLock: TObject;
 
 const
-  RESERVED_IPS: array [1 .. 11] of array [1 .. 2] of string = (('0.0.0.0', '0.255.255.255'),
-    ('10.0.0.0', '10.255.255.255'), ('127.0.0.0', '127.255.255.255'),
+  RESERVED_IPv4: array [1 .. 11] of array [1 .. 2] of string = (
+    ('0.0.0.0', '0.255.255.255'),
+    ('10.0.0.0', '10.255.255.255'),
+    ('127.0.0.0', '127.255.255.255'),
     ('169.254.0.0', '169.254.255.255'),
-    ('172.16.0.0', '172.31.255.255'), ('192.0.2.0', '192.0.2.255'), ('192.88.99.0', '192.88.99.255'),
-    ('192.168.0.0', '192.168.255.255'), ('198.18.0.0', '198.19.255.255'),
+    ('172.16.0.0', '172.31.255.255'),
+    ('192.0.2.0', '192.0.2.255'),
+    ('192.88.99.0', '192.88.99.255'),
+    ('192.168.0.0', '192.168.255.255'),
+    ('198.18.0.0', '198.19.255.255'),
     ('224.0.0.0', '239.255.255.255'),
     ('240.0.0.0', '255.255.255.255'));
+
+
+const
+  MVC_HTTP_STATUS_CODES: array [0..57] of TMVCHTTPStatusCode =
+    (
+      (Code: 100; ReasonString: 'Continue'),
+      (Code: 101; ReasonString: 'Switching Protocols'),
+      (Code: 102; ReasonString: 'Processing'),
+      (Code: 200; ReasonString: 'OK'),
+      (Code: 201; ReasonString: 'Created'),
+      (Code: 202; ReasonString: 'Accepted'),
+      (Code: 203; ReasonString: 'Non-Authoritative Information'),
+      (Code: 204; ReasonString: 'No Content'),
+      (Code: 205; ReasonString: 'Reset Content'),
+      (Code: 206; ReasonString: 'Partial Content'),
+      (Code: 207; ReasonString: 'Multi-Status'),
+      (Code: 208; ReasonString: 'Already Reported'),
+      (Code: 226; ReasonString: 'IM Used'),
+      (Code: 300; ReasonString: 'Multiple Choices'),
+      (Code: 301; ReasonString: 'Moved Permanently'),
+      (Code: 302; ReasonString: 'Found'),
+      (Code: 303; ReasonString: 'See Other'),
+      (Code: 304; ReasonString: 'Not Modified'),
+      (Code: 305; ReasonString: 'Use Proxy'),
+      (Code: 306; ReasonString: 'Reserved'),
+      (Code: 307; ReasonString: 'Temporary Redirect'),
+      (Code: 308; ReasonString: 'Permanent Redirect'),
+      (Code: 400; ReasonString: 'Bad Request'),
+      (Code: 401; ReasonString: 'Unauthorized'),
+      (Code: 402; ReasonString: 'Payment Required'),
+      (Code: 403; ReasonString: 'Forbidden'),
+      (Code: 404; ReasonString: 'Not Found'),
+      (Code: 405; ReasonString: 'Method Not Allowed'),
+      (Code: 406; ReasonString: 'Not Acceptable'),
+      (Code: 407; ReasonString: 'Proxy Authentication Required'),
+      (Code: 408; ReasonString: 'Request Timeout'),
+      (Code: 409; ReasonString: 'Conflict'),
+      (Code: 410; ReasonString: 'Gone'),
+      (Code: 411; ReasonString: 'Length Required'),
+      (Code: 412; ReasonString: 'Precondition Failed'),
+      (Code: 413; ReasonString: 'Request Entity Too Large'),
+      (Code: 414; ReasonString: 'Request-URI Too Long'),
+      (Code: 415; ReasonString: 'Unsupported Media Type'),
+      (Code: 416; ReasonString: 'Requested Range Not Satisfiable'),
+      (Code: 417; ReasonString: 'Expectation Failed'),
+      (Code: 422; ReasonString: 'Unprocessable Entity'),
+      (Code: 423; ReasonString: 'Locked'),
+      (Code: 424; ReasonString: 'Failed Dependency'),
+      (Code: 426; ReasonString: 'Upgrade Required'),
+      (Code: 428; ReasonString: 'Precondition Required'),
+      (Code: 429; ReasonString: 'Too Many Requests'),
+      (Code: 431; ReasonString: 'Request Header Fields Too Large'),
+      (Code: 500; ReasonString: 'Internal Server Error'),
+      (Code: 501; ReasonString: 'Not Implemented'),
+      (Code: 502; ReasonString: 'Bad Gateway'),
+      (Code: 503; ReasonString: 'Service Unavailable'),
+      (Code: 504; ReasonString: 'Gateway Timeout'),
+      (Code: 505; ReasonString: 'HTTP Version Not Supported'),
+      (Code: 506; ReasonString: 'Variant Also Negotiates (Experimental)'),
+      (Code: 507; ReasonString: 'Insufficient Storage'),
+      (Code: 508; ReasonString: 'Loop Detected'),
+      (Code: 510; ReasonString: 'Not Extended'),
+      (Code: 511; ReasonString: 'Network Authentication Required')
+    );
+
 
 type
   TMVCParseAuthentication = class
@@ -646,17 +773,31 @@ type
   end;
 
 
-
 implementation
 
 uses
+
   IdCoder3to4,
   System.NetEncoding,
   System.Character,
-  MVCFramework.Serializer.JsonDataObjects, MVCFramework.Serializer.Commons;
+  MVCFramework.Serializer.JsonDataObjects,
+  MVCFramework.Serializer.Commons,
+  MVCFramework.Utils,
+  System.RegularExpressions;
 
 var
   GlobalAppName, GlobalAppPath, GlobalAppExe: string;
+
+
+function URLEncode(const Value: string): string; overload;
+begin
+  Result := TNetEncoding.URL.Encode(Value);
+end;
+
+function URLDecode(const Value: string): string;
+begin
+  Result := TNetEncoding.URL.Decode(Value);
+end;
 
 function AppPath: string;
 begin
@@ -681,9 +822,15 @@ var
   IntIP: Cardinal;
 begin
   Result := False;
+  if Pos(':', AIP) > 0 then
+  begin
+    {TODO -oDanieleT -cGeneral : Support for IPv6 Reserved IP}
+    //https://www.iana.org/assignments/iana-ipv6-special-registry/iana-ipv6-special-registry.xhtml
+    Exit;
+  end;
   IntIP := IP2Long(AIP);
-  for I := low(RESERVED_IPS) to high(RESERVED_IPS) do
-    if (IntIP >= IP2Long(RESERVED_IPS[I][1])) and (IntIP <= IP2Long(RESERVED_IPS[I][2])) then
+  for I := low(RESERVED_IPv4) to high(RESERVED_IPv4) do
+    if (IntIP >= IP2Long(RESERVED_IPv4[I][1])) and (IntIP <= IP2Long(RESERVED_IPv4[I][2])) then
       Exit(True);
 end;
 
@@ -755,24 +902,30 @@ begin
   end;
 end;
 
-procedure SplitContentMediaTypeAndCharset(const aContentType: string; var aContentMediaType: string;
-  var aContentCharSet: string);
+procedure SplitContentMediaTypeAndCharset(const aContentType: string;
+  var aContentMediaType: string; var aContentCharSet: string);
 var
   lContentTypeValues: TArray<string>;
+  I,J: Integer;
 begin
   if not aContentType.IsEmpty then
   begin
     lContentTypeValues := aContentType.Split([';']);
-    aContentMediaType := Trim(lContentTypeValues[0]);
-    if (Length(lContentTypeValues) > 1) and (lContentTypeValues[1].Trim.StartsWith('charset', True))
-    then
+    aContentCharSet := '';
+    for I := low(lContentTypeValues) to high(lContentTypeValues) do
     begin
-      aContentCharSet := lContentTypeValues[1].Trim.Split(['='])[1].Trim;
-    end
-    else
-    begin
-      aContentCharSet := '';
+      if lContentTypeValues[I].Trim.StartsWith('charset', True) then
+      begin
+        aContentCharSet := lContentTypeValues[I].Trim.Split(['='])[1].Trim;
+        for J := I + 1 to high(lContentTypeValues) do
+        begin
+          lContentTypeValues[J - 1] := lContentTypeValues[J];
+        end;
+        SetLength(lContentTypeValues, Length(lContentTypeValues) - 1);
+        Break;
+      end;
     end;
+    aContentMediaType := string.Join(';', lContentTypeValues);
   end
   else
   begin
@@ -789,16 +942,21 @@ begin
   FHttpErrorCode := HTTP_STATUS.InternalServerError;
   FDetailedMessage := EmptyStr;
   FAppErrorCode := 0;
+  SetLength(FErrorItems, 0);
 end;
 
 constructor EMVCException.Create(const AMsg, ADetailedMessage: string;
-  const AAppErrorCode, AHTTPErrorCode: UInt16);
+  const AAppErrorCode, AHTTPErrorCode: UInt16; const AErrorItems: TArray<String>);
 begin
   Create(AMsg);
   CheckHTTPErrorCode(AHTTPErrorCode);
   FHttpErrorCode := AHTTPErrorCode;
   FAppErrorCode := AAppErrorCode;
   FDetailedMessage := ADetailedMessage;
+  if AErrorItems <> nil then
+  begin
+    FErrorItems := AErrorItems;
+  end;
 end;
 
 constructor EMVCException.Create(const AHTTPErrorCode: UInt16; const AMsg: string);
@@ -1319,6 +1477,19 @@ begin
   end;
 end;
 
+function StreamToBase64String(Source: TStream): string;
+var
+  lTmpStream: TStringStream;
+begin
+  lTmpStream := TStringStream.Create;
+  try
+    TMVCSerializerHelper.EncodeStream(Source, lTmpStream);
+    Result := lTmpStream.DataString;
+  finally
+    lTmpStream.Free;
+  end;
+end;
+
 function FileToBase64String(const FileName: string): string;
 var
   lTemplateFileB64: TStringStream;
@@ -1328,11 +1499,10 @@ begin
   try
     lTemplateFile := TFileStream.Create(FileName, fmOpenRead);
     try
-      TMVCSerializerHelper.EncodeStream(lTemplateFile, lTemplateFileB64);
+      Result := StreamToBase64String(lTemplateFile);
     finally
       lTemplateFile.Free;
     end;
-    Result := lTemplateFileB64.DataString;
   finally
     lTemplateFileB64.Free;
   end;
@@ -1347,25 +1517,32 @@ end;
 
 { TMVCGuidHelper }
 
-class function TMVCGuidHelper.GuidFromString(const AGuidStr: string): TGUID;
-var
-  LGuidStr: string;
+class function TMVCGuidHelper.GUIDToStringEx(const aGuid: TGUID): string;
 begin
-  if AGuidStr.Length = 32 then { string uuid without braces and dashes: ae502abe430bb23a28782d18d6a6e465 }
-  begin
-    LGuidStr := Format('{%s-%s-%s-%s-%s}', [AGuidStr.Substring(0, 8), AGuidStr.Substring(8, 4),
-      AGuidStr.Substring(12, 4), AGuidStr.Substring(16, 4), AGuidStr.Substring(20, 12)])
-  end
-  else if AGuidStr.Length = 36 then { string uuid without braces: ae502abe-430b-b23a-2878-2d18d6a6e465 }
-  begin
-    LGuidStr := Format('{%s}', [AGuidStr])
-  end
+  Result := aGuid.ToString.Substring(1, 36).ToLower; { UUID specification RFC 4122 - https://www.ietf.org/rfc/rfc4122.txt }
+end;
+
+class function TMVCGuidHelper.StringToGUIDEx(const aGuidStr: string): TGUID;
+var
+  lGuidStr: string;
+begin
+  case aGuidStr.Length of
+    32: { string uuid without braces and dashes: ae502abe430bb23a28782d18d6a6e465 }
+      begin
+        lGuidStr := Format('{%s-%s-%s-%s-%s}', [aGuidStr.Substring(0, 8), aGuidStr.Substring(8, 4),
+          aGuidStr.Substring(12, 4), aGuidStr.Substring(16, 4), aGuidStr.Substring(20, 12)]);
+      end;
+    36: { string uuid without braces: ae502abe-430b-b23a-2878-2d18d6a6e465 }
+      begin
+        lGuidStr := Format('{%s}', [aGuidStr])
+      end
   else
-  begin
-    LGuidStr := AGuidStr;
+    begin
+      lGuidStr := aGuidStr;
+    end;
   end;
 
-  Result := StringToGUID(LGuidStr);
+  Result := StringToGUID(lGuidStr);
 end;
 
 function CamelCase(const Value: string; const MakeFirstUpperToo: Boolean): string;
@@ -1377,6 +1554,7 @@ var
   lIsLowerCase: Boolean;
   lIsUpperCase, lPreviousWasUpperCase: Boolean;
   lIsAlpha: Boolean;
+  lIsNumber: Boolean;
 begin
   {TODO -oDanieleT -cGeneral : Make this function faster!}
   lNextUpCase := MakeFirstUpperToo;
@@ -1388,8 +1566,9 @@ begin
       C := Value.Chars[I];
       lIsLowerCase := CharInSet(C, ['a' .. 'z']);
       lIsUpperCase := CharInSet(C, ['A' .. 'Z']);
+      lIsNumber := CharInSet(C, ['0' .. '9']);
       lIsAlpha := lIsLowerCase or lIsUpperCase;
-      if not lIsAlpha then
+      if not (lIsAlpha or lIsNumber) then
       begin
         lNextUpCase := True;
         lPreviousWasUpperCase := False;
@@ -1415,6 +1594,10 @@ begin
         end;
       end;
       lPreviousWasUpperCase := lIsUpperCase;
+      if lIsNumber then
+      begin
+        lNextUpCase := True;
+      end;
     end;
     Result := lSB.ToString;
   finally
@@ -1422,16 +1605,137 @@ begin
   end;
 end;
 
-function StrToJSONObject(const aString: String): TJsonObject;
+function SnakeCase(const Value: string): string;
+var
+  I: Integer;
+  lSB: TStringBuilder;
+  C: Char;
+  lIsUpperCase: Boolean;
+  lIsLowerCase: Boolean;
+  lLastWasLowercase: Boolean;
+  lIsNumber: Boolean;
+  lLastWasUnderscore: Boolean;
+  lIsUnderscore: Boolean;
+  lLastWasNumber: Boolean;
+  lNextUnderscore: Boolean;
+  lLengthValue: Integer;
 begin
-  Result := MVCFramework.Serializer.JSONDataObjects.StrToJSONObject(aString);
+  lLastWasLowercase := False;
+  lLastWasUnderscore := False;
+  lLastWasNumber := False;
+  lNextUnderscore := False;
+  lLengthValue := Length(Value);
+  lSB := TStringBuilder.Create;
+  try
+    for I := 0 to lLengthValue - 1 do
+    begin
+      C := Value.Chars[I];
+      lIsUpperCase := CharInSet(C, ['A' .. 'Z']);
+      lIsLowerCase := CharInSet(C, ['a' .. 'z']);
+      lIsNumber := CharInSet(C, ['0' .. '9']);
+      lIsUnderscore := C = '_';
+
+      if not (lIsUpperCase or lIsLowerCase or lIsNumber or lIsUnderscore) then
+      begin
+        lNextUnderscore := True;
+        Continue;
+      end
+      else
+      begin
+        if (I > 0) and (not lLastWasUnderscore) and
+          (lNextUnderscore or
+          (lIsUpperCase and (lLastWasLowercase or lLastWasNumber)) or
+          (lIsLowerCase and lLastWasNumber) or
+          (lIsNumber and (not lLastWasNumber)) or
+          (lIsUpperCase and (not lLastWasLowercase) and ((I + 1) <= (lLengthValue - 1)) and
+          CharInSet(Value.Chars[I + 1], ['a' .. 'z']))) then
+        begin
+          lSB.Append('_');
+        end;
+
+        if not (lLastWasUnderscore and lIsUnderscore) then
+        begin
+          lSB.Append(LowerCase(C));
+        end;
+        lLastWasUnderscore := lIsUnderscore or lNextUnderscore;
+        lLastWasLowercase := lIsLowerCase;
+        lLastWasNumber := lIsNumber;
+        lNextUnderscore := False;
+      end;
+    end;
+    Result := lSB.ToString;
+  finally
+    lSB.Free;
+  end;
 end;
 
-function StrToJSONArray(const aString: String): TJsonArray;
+function StrToJSONObject(const aString: String; ARaiseExceptionOnError: Boolean = False): TJsonObject;
 begin
-  Result := MVCFramework.Serializer.JSONDataObjects.StrToJSONArray(aString);
+  Result := MVCFramework.Utils.StrToJSONObject(aString, ARaiseExceptionOnError);
 end;
 
+function StrToJSONArray(const aString: String; ARaiseExceptionOnError: Boolean = False): TJsonArray;
+begin
+  Result := MVCFramework.Utils.StrToJSONArray(aString, ARaiseExceptionOnError);
+end;
+
+function WrapAsList(const AObject: TObject; AOwnsObject: Boolean = False): IMVCList;
+begin
+  Result := MVCFramework.Utils.WrapAsList(AObject, AOwnsObject);
+end;
+
+{ TMVCStringHelper }
+
+class function TMVCStringHelper.StartsText(const ASubText, AText: string): Boolean;
+begin
+  if ASubText = EmptyStr then
+    Result := True
+  else
+  begin
+    if (AText.Length >= ASubText.Length) then
+      Result := AnsiStrLIComp(PChar(ASubText), PChar(AText), ASubText.Length) = 0
+    else
+      Result := False;
+  end;
+end;
+
+class function TMVCStringHelper.StartsWith(const ASubText, AText: string; AIgnoreCase: Boolean): Boolean;
+begin
+  if AIgnoreCase then
+    Result := StartsText(ASubText, AText)
+  else
+  if ASubText = EmptyStr then
+    Result := True
+  else
+  begin
+    if (AText.Length >= ASubText.Length) then
+      Result := CompareStr(AText.Substring(0, ASubText.Length), ASubText) = 0
+    else
+      Result := False;
+  end;
+end;
+
+
+function ReasonStringByHTTPStatusCode(const HTTPStatusCode: Integer): String; inline;
+var
+  I: Integer;
+begin
+  for I := Low(MVC_HTTP_STATUS_CODES) to High(MVC_HTTP_STATUS_CODES) do
+  begin
+    if MVC_HTTP_STATUS_CODES[I].Code = HTTPStatusCode then
+    begin
+      Exit(MVC_HTTP_STATUS_CODES[I].ReasonString);
+    end;
+  end;
+  raise EMVCException.Create('Invalid HTTP status code: ' + IntToStr(HTTPStatusCode));
+end;
+
+{ HTTP_STATUS }
+
+class function HTTP_STATUS.ReasonStringFor(const HTTPStatusCode: Integer): String;
+begin
+  Result := ReasonStringByHTTPStatusCode(HTTPStatusCode);
+end;
 
 initialization
 

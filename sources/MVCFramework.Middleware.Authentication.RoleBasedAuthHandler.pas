@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // Contributor of this file: Janidan - https://github.com/janidan
 //
@@ -81,7 +81,7 @@ type
       abstract;
 
     procedure OnAuthorization(const AContext: TWebContext; UserRoles: TList<string>;
-      const ControllerQualifiedClassName: string; const ActionName: string; var IsAuthorized: Boolean); overload;
+      const ControllerQualifiedClassName: string; const ActionName: string; var IsAuthorized: Boolean); overload; virtual;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -94,7 +94,7 @@ type
       const AActionName: string; var AHandled: Boolean);
   protected
     procedure OnBeforeControllerAction(AContext: TWebContext; const AControllerQualifiedClassName: string;
-      const AActionName: string; var AHandled: Boolean);
+      const AActionName: string; var AHandled: Boolean); override;
   public
     constructor Create(const AAuthenticationHandler: IMVCAuthenticationHandler;
       const ALoginUrl: string = '/system/users/logged'); override;

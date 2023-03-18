@@ -78,32 +78,11 @@ begin
       Config[TMVCConfigKey.ExposeServerSignature] := 'true';
     end);
 
-  FMVC.AddMiddleware(TMVCStaticFilesMiddleware.Create(
-    '/', { StaticFilesPath }
-    TPath.Combine(ExtractFilePath(GetModuleName(HInstance)), 'www'), { DocumentRoot }
-    'index.html' { IndexDocument }
-    ));
   FMVC.AddController(TOtherController, '/api/foo');
   FMVC.AddController(TMVCActiveRecordController,
     function: TMVCController
     begin
-      Result := TMVCActiveRecordController.Create(
-        function: TFDConnection
-        begin
-          Result := TFDConnection.Create(nil);
-          Result.ConnectionDefName := ConnectionDefinitionName;
-        end,
-        function(aContext: TWebContext; aClass: TMVCActiveRecordClass; aAction: TMVCActiveRecordAction): Boolean
-        begin
-          if aContext.LoggedUser.IsValid then
-          begin
-            Result := True;
-          end
-          else
-          begin
-            Result := True; // not(aAction in [TMVCActiveRecordAction.Delete]);
-          end;
-        end);
+      Result := TMVCActiveRecordController.Create(ConnectionDefinitionName);
     end, '/api/entities');
 end;
 

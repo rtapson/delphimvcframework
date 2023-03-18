@@ -62,7 +62,10 @@ begin
   LSwagInfo.LicenseName := 'Apache License - Version 2.0, January 2004';
   LSwagInfo.LicenseUrl := 'http://www.apache.org/licenses/LICENSE-2.0';
   FEngine.AddMiddleware(TMVCSwaggerMiddleware.Create(FEngine, LSwagInfo, '/api/swagger.json',
-    'Method for authentication using JSON Web Token (JWT)'));
+    'Method for authentication using JSON Web Token (JWT)',
+    False
+//    ,'api.dmvcframework.com', '/'  { Define a custom host and BasePath when your API uses a dns for external access }
+    ));
 
   LClaimsSetup := procedure(const JWT: TJWT)
     begin
@@ -74,13 +77,13 @@ begin
 
   FEngine.AddMiddleware(TMVCJWTAuthenticationMiddleware.Create(
     TAuthHandler.Create,
+    LClaimsSetup,
     'D3lph1MVCFram3w0rk',
     '/api/login',
-    LClaimsSetup,
     [TJWTCheckableClaim.ExpirationTime, TJWTCheckableClaim.NotBefore, TJWTCheckableClaim.IssuedAt]
     ));
   FEngine.AddMiddleware(TMVCStaticFilesMiddleware.Create(
-    '/',         { StaticFilesPath }
+    '/swagger',         { StaticFilesPath }
     '.\www',     { DocumentRoot }
     'index.html' { IndexDocument - Before it was named fallbackresource }
     ));

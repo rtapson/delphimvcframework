@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -28,6 +28,9 @@ unit CustomTypesU;
 
 interface
 
+uses
+  System.Generics.Defaults, System.Generics.Collections;
+
 type
   // custom serialization is by-type so we define a type alias
   // useful to identify all the fields that must be serialized
@@ -39,7 +42,7 @@ type
     HasValue: Boolean;
   end;
 
-  TNullableRecordAlias = TNullableRecord<String>;
+  TNullableRecordAlias = TNullableRecord<string>;
 
   // This is the main object which uses the
   // custom serialized type as property Roles
@@ -60,14 +63,31 @@ type
 
   TArrayTest = class
   private
-    fStrings: TArray<String>;
+    fStrings: TArray<string>;
     fIntegers: TArray<Integer>;
     fDoubles: TArray<Double>;
+    fEmptyIntegers: TArray<Integer>;
+    fNilArrayOfIntegers: TArray<Integer>;
   public
     constructor Create;
     property Integers: TArray<Integer> read fIntegers write fIntegers;
-    property Strings: TArray<String> read fStrings write fStrings;
+    property Strings: TArray<string> read fStrings write fStrings;
     property Doubles: TArray<Double> read fDoubles write fDoubles;
+    property EmptyIntegers: TArray<Integer> read fEmptyIntegers write fEmptyIntegers;
+    property NilArrayOfIntegers: TArray<Integer> read fNilArrayOfIntegers write fNilArrayOfIntegers;
+  end;
+
+  TSimpleListTest = class
+  private
+    fDoubles: TList<Double>;
+    fStrings: TList<string>;
+    fIntegers: TList<Integer>;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Integers: TList<Integer> read fIntegers;
+    property Strings: TList<string> read fStrings;
+    property Doubles: TList<Double> read fDoubles;
   end;
 
 implementation
@@ -101,6 +121,8 @@ var
   I: Integer;
 begin
   inherited;
+  fNilArrayOfIntegers := nil;
+  SetLength(fEmptyIntegers, 0);
   SetLength(fStrings, 5);
   for I := 0 to Length(fStrings) - 1 do
   begin
@@ -116,6 +138,27 @@ begin
   begin
     fDoubles[I] := Power(I, I) * 1.1;
   end;
+end;
+
+{ TSimpleListTest }
+
+constructor TSimpleListTest.Create;
+begin
+  inherited;
+  fIntegers := TList<Integer>.Create();
+  fIntegers.AddRange([1, 2, 3, 4, 5]);
+  fStrings := TList<string>.Create();
+  fStrings.AddRange(['good', 'bye', 'cruel', 'world']);
+  fDoubles := TList<Double>.Create();
+  fDoubles.AddRange([1.2, 2.3, 3.4, 4.5, 5.6]);
+end;
+
+destructor TSimpleListTest.Destroy;
+begin
+  fIntegers.Free;
+  fStrings.Free;
+  fDoubles.Free;
+  inherited;
 end;
 
 end.

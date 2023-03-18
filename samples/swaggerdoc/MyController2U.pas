@@ -8,20 +8,23 @@ uses
   MVCFramework.Commons,
   MVCFramework.Swagger.Commons,
   MVCFramework.Serializer.Commons,
-  MVCFramework.Middleware.Authentication.RoleBasedAuthHandler;
+  MVCFramework.Middleware.Authentication.RoleBasedAuthHandler,
+  MVCFramework.Nullables;
 
 type
 
   [MVCNameCase(ncLowerCase)]
-  TAddress = class
+  TAddress = class(TInterfacedObject)
   private
     FStreet: string;
     FNumber: Integer;
     FCity: string;
+    FPostalCode: NullableString;
   public
     property Street: string read FStreet write FStreet;
     property Number: Integer read FNumber write FNumber;
     property City: string read FCity write FCity;
+    property PostalCode: NullableString read FPostalCode write FPostalCode;
   end;
 
   [MVCNameCase(ncLowerCase)]
@@ -38,6 +41,8 @@ type
   TPhones = class(TObjectList<TPhone>)
   end;
 
+  TGender = (Male, Female);
+
   [MVCNameCase(ncLowerCase)]
   TPerson = class
   private
@@ -47,20 +52,33 @@ type
     FCode: Integer;
     FAddress: TAddress;
     FPhones: TPhones;
+    FGender: TGender;
+    FArrayField: TArray<string>;
+    FListField: TList<string>;
+    FStringDictionary: TMVCStringDictionary;
   public
     constructor Create;
     destructor Destroy; override;
 
     [MVCSwagJsonSchemaField(stInteger, 'code', 'person id', True, False)]
     property Code: Integer read FCode write FCode;
-    [MVCSwagJsonSchemaField('name', 'person name', True, False)]
+    [MVCSwagJsonSchemaField('name', 'person name', True, False, 5, 100)]
     property Name: string read FName write FName;
+    [MVCSwagJsonSchemaField('gender', 'person gender', True, False)]
+    [MVCEnumSerialization(estEnumName)]
+    property Gender: TGender read FGender write FGender;
     [MVCSwagJsonSchemaField('age', 'person age', True, False)]
     property Age: Integer read FAge write FAge;
-    [MVCSwagJsonSchemaField('country', 'Nationality of the person', True, False)]
+    [MVCSwagJsonSchemaField('country', 'Nationality of the person', True, False, 0, 100)]
     property Country: string read FCountry write FCountry;
     property Address: TAddress read FAddress write FAddress;
     property Phones: TPhones read FPhones write FPhones;
+    [MVCSwagJsonSchemaField(stArray, 'arrayfield', 'Array Field', True, False)]
+    property ArrayField: TArray<string> read FArrayField write FArrayField;
+    [MVCSwagJsonSchemaField(stArray, 'listfield', 'List Field', True, False)]
+    property ListField: TList<string> read FListField write FListField;
+//    [MVCSwagJsonSchemaField(stObject, 'stringdictionary', 'String Dictionary description')]
+    property StringDictionary: TMVCStringDictionary read FStringDictionary write FStringDictionary;
   end;
 
   [MVCNameCase(ncLowerCase)]
@@ -152,12 +170,16 @@ begin
   inherited;
   FAddress := TAddress.Create;
   FPhones := TPhones.Create;
+  FStringDictionary := TMVCStringDictionary.Create;
+  FListField := TList<String>.Create;
 end;
 
 destructor TPerson.Destroy;
 begin
+  FListField.Free;
   FAddress.Free;
   FPhones.Free;
+  FStringDictionary.Free;
   inherited;
 end;
 

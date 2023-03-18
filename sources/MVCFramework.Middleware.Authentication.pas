@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -58,15 +58,15 @@ type
 
     procedure OnAfterControllerAction(
       AContext: TWebContext;
-      const AActionName: string;
+      const AControllerQualifiedClassName: string; const AActionName: string;
       const AHandled: Boolean
       );
+    procedure OnAfterRouting(AContext: TWebContext; const AHandled: Boolean);
   public
     constructor Create(
       const AAuthenticationHandler: IMVCAuthenticationHandler;
       const ARealm: string = 'DelphiMVCFramework REALM'
       ); virtual;
-    procedure OnAfterRouting(AContext: TWebContext; const AHandled: Boolean);
   end;
 
   TMVCCustomAuthenticationMiddleware = class(TInterfacedObject, IMVCMiddleware)
@@ -84,18 +84,17 @@ type
       const AControllerQualifiedClassName: string;
       const AActionName: string;
       var AHandled: Boolean
-      );
+      ); virtual;
 
     procedure OnAfterControllerAction(
       AContext: TWebContext;
-      const AActionName: string;
-      const AHandled: Boolean
-      );
+      const AControllerQualifiedClassName: string; const AActionName: string;
+      const AHandled: Boolean);
+
     procedure OnAfterRouting(
       AContext: TWebContext;
       const AHandled: Boolean
       );
-
 
     procedure SendResponse(AContext: TWebContext; var AHandled: Boolean; AHttpStatus: Word = HTTP_STATUS.Unauthorized);
     procedure DoLogin(AContext: TWebContext; var AHandled: Boolean);
@@ -126,9 +125,10 @@ begin
 end;
 
 procedure TMVCBasicAuthenticationMiddleware.OnAfterControllerAction(
-  AContext: TWebContext;
-  const AActionName: string;
-  const AHandled: Boolean);
+      AContext: TWebContext;
+      const AControllerQualifiedClassName: string; const AActionName: string;
+      const AHandled: Boolean
+      );
 begin
   // Implement as needed
 end;
@@ -149,15 +149,18 @@ procedure TMVCBasicAuthenticationMiddleware.OnBeforeControllerAction(
     if AContext.Request.ClientPreferHTML then
     begin
       AContext.Response.ContentType := TMVCMediaType.TEXT_HTML;
-      AContext.Response.RawWebResponse.Content := Format(CONTENT_HTML_FORMAT, [CONTENT_401_NOT_AUTHORIZED, AContext.Config[TMVCConfigKey.ServerName]]);
+      AContext.Response.RawWebResponse.Content :=
+        Format(CONTENT_HTML_FORMAT, [CONTENT_401_NOT_AUTHORIZED, AContext.Config[TMVCConfigKey.ServerName]]);
     end
     else
     begin
       AContext.Response.ContentType := TMVCMediaType.TEXT_PLAIN;
-      AContext.Response.RawWebResponse.Content := CONTENT_401_NOT_AUTHORIZED + sLineBreak + AContext.Config[TMVCConfigKey.ServerName];
+      AContext.Response.RawWebResponse.Content := CONTENT_401_NOT_AUTHORIZED + sLineBreak + AContext.Config
+        [TMVCConfigKey.ServerName];
     end;
     AContext.Response.StatusCode := HTTP_STATUS.Unauthorized;
     AContext.Response.SetCustomHeader('WWW-Authenticate', 'Basic realm=' + QuotedStr(FRealm));
+    AContext.SessionStop(False);
     AHandled := True;
   end;
 
@@ -167,21 +170,30 @@ procedure TMVCBasicAuthenticationMiddleware.OnBeforeControllerAction(
     if AContext.Request.ClientPreferHTML then
     begin
       AContext.Response.ContentType := TMVCMediaType.TEXT_HTML;
-      AContext.Response.RawWebResponse.Content := Format(CONTENT_HTML_FORMAT, [CONTENT_403_FORBIDDEN, AContext.Config[TMVCConfigKey.ServerName]]);
+      AContext.Response.RawWebResponse.Content :=
+        Format(CONTENT_HTML_FORMAT, [CONTENT_403_FORBIDDEN, AContext.Config[TMVCConfigKey.ServerName]]);
+    end
+    else if AContext.Request.ContentMediaType.StartsWith(TMVCMediaType.APPLICATION_JSON) then
+    begin
+      AContext.Response.ContentType := TMVCMediaType.APPLICATION_JSON;
+      AContext.Response.RawWebResponse.Content :=
+        '{"status":"error", "message":"' + CONTENT_403_FORBIDDEN.Replace('"', '\"') + '"}';
     end
     else
     begin
       AContext.Response.ContentType := TMVCMediaType.TEXT_PLAIN;
-      AContext.Response.RawWebResponse.Content := CONTENT_403_FORBIDDEN + sLineBreak + AContext.Config[TMVCConfigKey.ServerName];
+      AContext.Response.RawWebResponse.Content := CONTENT_403_FORBIDDEN + sLineBreak + AContext.Config
+        [TMVCConfigKey.ServerName];
     end;
     AContext.Response.StatusCode := HTTP_STATUS.Forbidden;
+    AContext.Response.ReasonString := AContext.Config[TMVCConfigKey.ServerName];
     AHandled := True;
   end;
 
 var
   AuthRequired: Boolean;
   IsValid, IsAuthorized: Boolean;
-  AuthHeader: string;
+  AuthHeader, Token: string;
   AuthPieces: TArray<string>;
   RolesList: TList<string>;
   SessionData: TSessionData;
@@ -199,9 +211,15 @@ begin
   if not IsValid then
   begin
     AuthHeader := AContext.Request.Headers['Authorization'];
-    AuthHeader := TMVCSerializerHelper.DecodeString(AuthHeader.Remove(0, 'Basic'.Length).Trim);
+    if AuthHeader.IsEmpty or (not AuthHeader.StartsWith('Basic ', True)) then
+    begin
+      SendWWWAuthenticate;
+      Exit;
+    end;
+    Token := AuthHeader.Remove(0, 'Basic '.Length).Trim;
+    AuthHeader := TMVCSerializerHelper.DecodeString(Token);
     AuthPieces := AuthHeader.Split([':']);
-    if AuthHeader.IsEmpty or (Length(AuthPieces) <> 2) then
+    if Length(AuthPieces) <> 2 then
     begin
       SendWWWAuthenticate;
       Exit;
@@ -211,7 +229,8 @@ begin
     try
       SessionData := TSessionData.Create;
       try
-        FAuthenticationHandler.OnAuthentication(AContext, AuthPieces[0], AuthPieces[1], RolesList, IsValid, SessionData);
+        FAuthenticationHandler.OnAuthentication(AContext, AuthPieces[0], AuthPieces[1], RolesList, IsValid,
+          SessionData);
         if IsValid then
         begin
           AContext.LoggedUser.Roles.AddRange(RolesList);
@@ -232,7 +251,8 @@ begin
 
   IsAuthorized := False;
   if IsValid then
-    FAuthenticationHandler.OnAuthorization(AContext, AContext.LoggedUser.Roles, AControllerQualifiedClassName, AActionName, IsAuthorized);
+    FAuthenticationHandler.OnAuthorization(AContext, AContext.LoggedUser.Roles, AControllerQualifiedClassName,
+      AActionName, IsAuthorized);
 
   if IsAuthorized then
     AHandled := False
@@ -241,7 +261,9 @@ begin
     if IsValid then
       Send403Forbidden
     else
+    begin
       SendWWWAuthenticate;
+    end;
   end;
 end;
 
@@ -249,7 +271,7 @@ procedure TMVCBasicAuthenticationMiddleware.OnBeforeRouting(
   AContext: TWebContext;
   var AHandled: Boolean);
 begin
-  // Implement as needed
+  AHandled := False;
 end;
 
 { TMVCCustomAuthenticationMiddleware }
@@ -281,7 +303,8 @@ begin
     AHandled := True;
     AContext.Response.StatusCode := HTTP_STATUS.BadRequest;
     AContext.Response.ContentType := TMVCMediaType.APPLICATION_JSON;
-    AContext.Response.RawWebResponse.Content := '{"status":"KO", "message":"username and password are mandatory in the body request as json object"}';
+    AContext.Response.RawWebResponse.Content :=
+      '{"status":"error", "message":"username and password are mandatory in the body request as json object"}';
     Exit;
   end;
 
@@ -356,8 +379,9 @@ begin
 end;
 
 procedure TMVCCustomAuthenticationMiddleware.OnAfterControllerAction(
-  AContext: TWebContext; const AActionName: string;
-  const AHandled: Boolean);
+      AContext: TWebContext;
+      const AControllerQualifiedClassName: string; const AActionName: string;
+      const AHandled: Boolean);
 begin
   // Implement as needed
 end;
@@ -393,7 +417,8 @@ begin
   end;
 
   IsAuthorized := False;
-  FAuthenticationHandler.OnAuthorization(AContext, AContext.LoggedUser.Roles, AControllerQualifiedClassName, AActionName, IsAuthorized);
+  FAuthenticationHandler.OnAuthorization(AContext, AContext.LoggedUser.Roles, AControllerQualifiedClassName,
+    AActionName, IsAuthorized);
   if IsAuthorized then
     AHandled := False
   else
@@ -412,7 +437,8 @@ begin
   begin
     AHandled := False;
 
-    if (AContext.Request.HTTPMethod = httpPOST) and (AContext.Request.ContentType.StartsWith(TMVCMediaType.APPLICATION_JSON)) then
+    if (AContext.Request.HTTPMethod = httpPOST) and
+      (AContext.Request.ContentType.StartsWith(TMVCMediaType.APPLICATION_JSON)) then
       DoLogin(AContext, AHandled);
 
     if (AContext.Request.HTTPMethod = httpDELETE) then
@@ -433,7 +459,8 @@ begin
   if AContext.Request.ClientPreferHTML then
   begin
     AContext.Response.ContentType := TMVCMediaType.TEXT_HTML;
-    AContext.Response.RawWebResponse.Content := Format(CONTENT_HTML_FORMAT, [IntToStr(AHttpStatus), AContext.Config[TMVCConfigKey.ServerName]]);
+    AContext.Response.RawWebResponse.Content :=
+      Format(CONTENT_HTML_FORMAT, [IntToStr(AHttpStatus), AContext.Config[TMVCConfigKey.ServerName]]);
   end
   else
   begin

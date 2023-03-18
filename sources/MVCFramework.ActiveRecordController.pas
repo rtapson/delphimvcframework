@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -47,12 +47,17 @@ type
   TMVCActiveRecordController = class(TMVCController)
   private
     fAuthorization: TMVCActiveRecordAuthFunc;
+    fURLSegment: string;
   protected
     function GetMaxRecordCount: Integer;
     function CheckAuthorization(aClass: TMVCActiveRecordClass; aAction: TMVCActiveRecordAction): Boolean; virtual;
   public
     constructor Create(const aConnectionFactory: TFunc<TFDConnection>;
-      const aAuthorization: TMVCActiveRecordAuthFunc = nil); reintroduce;
+      const aAuthorization: TMVCActiveRecordAuthFunc = nil;
+      const aURLSegment: String = ''); reintroduce; overload;
+    constructor Create(const aConnectionDefName: String;
+      const aAuthorization: TMVCActiveRecordAuthFunc = nil;
+      const aURLSegment: String = ''); reintroduce; overload;
     destructor Destroy; override;
 
     [MVCPath('/($entityname)')]
@@ -102,7 +107,7 @@ implementation
 uses
 
   MVCFramework.Logger,
-  JsonDataObjects;
+  JsonDataObjects, Data.DB;
 
 procedure TMVCActiveRecordController.GetEntities(const entityname: string);
 var
@@ -114,7 +119,8 @@ var
   lRQLBackend: string;
   lProcessor: IMVCEntityProcessor;
   lHandled: Boolean;
-  lResp: TMVCActiveRecordListResponse;
+  lARResp: TMVCActiveRecordList;
+  lStrDict : TMVCStringDictionary;
 begin
   lProcessor := nil;
   if ActiveRecordMappingRegistry.FindProcessorByURLSegment(entityname, lProcessor) then
@@ -154,19 +160,45 @@ begin
     end;
 
 
-    lResp := TMVCActiveRecordListResponse.Create(TMVCActiveRecord.SelectRQL(lARClassRef, lRQL,
-      GetMaxRecordCount), True);
+    lARResp := TMVCActiveRecord.SelectRQL(lARClassRef, lRQL, GetMaxRecordCount);
     try
-      lResp.Metadata.Add('page_size', lResp.Items.Count.ToString);
-      if Context.Request.QueryStringParam('count').ToLower = 'true' then
-      begin
-        lResp.Metadata.Add('count', TMVCActiveRecord.Count(lARClassRef, lRQL).ToString);
+      lStrDict := StrDict(['page_size'],[lARResp.Count.ToString]);
+      try
+        if Context.Request.QueryStringParam('count').ToLower = 'true' then
+        begin
+          lStrDict.Add('count', TMVCActiveRecord.Count(lARClassRef, lRQL).ToString);
+        end;
+        Render(ObjectDict(False)
+          .Add('data', lARResp,
+            procedure(const AObject: TObject; const Links: IMVCLinks)
+            begin
+              //Links.AddRefLink.Add(HATEOAS.HREF, fURLSegment + '/' + )
+              case TMVCActiveRecord(AObject).GetPrimaryKeyFieldType of
+                ftInteger:
+                  Links.AddRefLink.Add(HATEOAS.HREF, fURLSegment + '/' + TMVCActiveRecord(AObject).GetPK.AsInt64.ToString)
+              end;
+            end)
+          .Add('meta', lStrDict));
+      finally
+        lStrDict.Free;
       end;
-      Render(lResp);
-    except
-      lResp.Free;
-      raise;
+    finally
+      lARResp.Free;
     end;
+
+//    lResp := TMVCActiveRecordListResponse.Create(TMVCActiveRecord.SelectRQL(lARClassRef, lRQL,
+//      GetMaxRecordCount), True);
+//    try
+//      lResp.Metadata.Add('page_size', lResp.Items.Count.ToString);
+//      if Context.Request.QueryStringParam('count').ToLower = 'true' then
+//      begin
+//        lResp.Metadata.Add('count', TMVCActiveRecord.Count(lARClassRef, lRQL).ToString);
+//      end;
+//      Render(lResp);
+//    except
+//      lResp.Free;
+//      raise;
+//    end;
 
     // Render<TMVCActiveRecord>(TMVCActiveRecord.SelectRQL(lARClassRef, lRQL, lMapping, lRQLBackend), True);
   except
@@ -265,11 +297,13 @@ begin
 end;
 
 constructor TMVCActiveRecordController.Create(const aConnectionFactory: TFunc<TFDConnection>;
-  const aAuthorization: TMVCActiveRecordAuthFunc = nil);
+  const aAuthorization: TMVCActiveRecordAuthFunc;
+  const aURLSegment: String);
 var
   lConn: TFDConnection;
 begin
   inherited Create;
+  fURLSegment := aURLSegment;
   try
     lConn := aConnectionFactory();
   except
@@ -280,6 +314,15 @@ begin
     end;
   end;
   ActiveRecordConnectionsRegistry.AddConnection('default', lConn, True);
+  fAuthorization := aAuthorization;
+end;
+
+constructor TMVCActiveRecordController.Create(const aConnectionDefName: String;
+  const aAuthorization: TMVCActiveRecordAuthFunc; const aURLSegment: String);
+begin
+  inherited Create;
+  fURLSegment := aURLSegment;
+  ActiveRecordConnectionsRegistry.AddDefaultConnection(aConnectionDefName);
   fAuthorization := aAuthorization;
 end;
 
@@ -319,11 +362,11 @@ begin
     Context.Response.CustomHeaders.Values['X-REF'] := Context.Request.PathInfo + '/' + lAR.GetPK.AsInt64.ToString;
     if Context.Request.QueryStringParam('refresh').ToLower = 'true' then
     begin
-      Render(http_status.Created, entityname.ToLower + ' created', '', lAR);
+      RenderStatusMessage(http_status.Created, entityname.ToLower + ' created', '', lAR);
     end
     else
     begin
-      Render(http_status.Created, entityname.ToLower + ' created');
+      RenderStatusMessage(http_status.Created, entityname.ToLower + ' created');
     end;
   finally
     lAR.Free;
@@ -368,11 +411,11 @@ begin
     Context.Response.CustomHeaders.Values['X-REF'] := Context.Request.PathInfo;
     if Context.Request.QueryStringParam('refresh').ToLower = 'true' then
     begin
-      Render(http_status.OK, entityname.ToLower + ' updated', '', lAR);
+      RenderStatusMessage(http_status.OK, entityname.ToLower + ' updated', '', lAR);
     end
     else
     begin
-      Render(http_status.OK, entityname.ToLower + ' updated');
+      RenderStatusMessage(http_status.OK, entityname.ToLower + ' updated');
     end;
   finally
     lAR.Free;
@@ -383,7 +426,20 @@ procedure TMVCActiveRecordController.DeleteEntity(const entityname: string; cons
 var
   lAR: TMVCActiveRecord;
   lARClass: TMVCActiveRecordClass;
+  lProcessor: IMVCEntityProcessor;
+  lHandled: Boolean;
 begin
+  lProcessor := nil;
+  if ActiveRecordMappingRegistry.FindProcessorByURLSegment(entityname, lProcessor) then
+  begin
+    lHandled := False;
+    lProcessor.DeleteEntity(Context, self, entityname, id, lHandled);
+    if lHandled then
+    begin
+      Exit;
+    end;
+  end;
+
   if not ActiveRecordMappingRegistry.FindEntityClassByURLSegment(entityname, lARClass) then
   begin
     raise EMVCException.CreateFmt(http_status.NotFound, 'Cannot find class for entity %s', [entityname]);

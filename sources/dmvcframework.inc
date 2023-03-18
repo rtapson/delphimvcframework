@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2019 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -70,6 +70,11 @@ DelphiMVCFramework is compatible with Delphi version XE7 or better
 {$IF CompilerVersion >= 34} // 10.4 Sydney
 {$DEFINE SYDNEYORBETTER}
 {$ENDIF}
+
+{$IF CompilerVersion >= 35} // 11 Alexandria
+{$DEFINE ALEXANDRIAORBETTER}
+{$ENDIF}
+
 
 {$IFDEF MOBILE}
 {$LEGACYIFEND OFF}

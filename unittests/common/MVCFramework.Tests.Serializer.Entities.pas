@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -33,7 +33,9 @@ uses
   System.Classes,
   System.Rtti,
   System.Generics.Collections,
-  MVCFramework.Serializer.Commons;
+  MVCFramework.Serializer.Commons,
+  MVCFramework.Commons,
+  MVCFramework.Nullables;
 
 type
 
@@ -219,12 +221,31 @@ type
   TEntityCustomWithGuid = class(TEntityCustom)
   private
     FGuidValue: TGUID;
+    FGuidValue2: TGUID;
+    FNullableGuid: NullableTGUID;
+    FNullableGuid2: NullableTGUID;
   public
     property GuidValue: TGUID read FGuidValue write FGuidValue;
+    [MVCSerializeGuidWithoutBraces]
+    property GuidValue2: TGUID read FGuidValue2 write FGuidValue2;
+    property NullableGuid: NullableTGUID read FNullableGuid write FNullableGuid;
+    [MVCSerializeGuidWithoutBraces]
+    property NullableGuid2: NullableTGUID read FNullableGuid2 write FNullableGuid2;
   end;
 
   TColorEnum = (RED, GREEN, BLUE);
   TMonthEnum = (meJanuary, meFebruary, meMarch, meApril);
+  TMonths = set of TMonthEnum;
+  TColors = set of TColorEnum;
+
+  TEntityWithSets = class
+  private
+    fMonthsSet: TMonths;
+    fColorsSet: TColors;
+  public
+    property MonthsSet: TMonths read fMonthsSet write fMonthsSet;
+    property ColorsSet: TColors read fColorsSet write fColorsSet;
+  end;
 
   TEntityWithEnums = class
   private
@@ -295,10 +316,12 @@ type
     FId: Int64;
     FNames: TArray<String>;
     FValues: TArray<Integer>;
+    FBooleans: TArray<Boolean>;
   public
     property Id: Int64 read FId write FId;
     property Names: TArray<String> read FNames write FNames;
     property Values: TArray<Integer> read FValues write FValues;
+    property Booleans: TArray<Boolean> read FBooleans write FBooleans;
   end;
 
   IChildEntity = interface
@@ -383,6 +406,15 @@ type
     property Description: string read FDescription write FDescription;
     property Items: TObjectList<T1> read FItems write FItems;
     property Items2: TObjectList<T2> read FItems2 write FItems2;
+  end;
+
+  TEntityWithStringDictionary = class
+  private
+    FDict: TMVCStringDictionary;
+  public
+    constructor Create;
+    destructor Destroy; override;
+    property Dict: TMVCStringDictionary read FDict write FDict;
   end;
 
 
@@ -552,5 +584,18 @@ begin
   inherited Destroy;
 end;
 
+
+{ TEntityWithStringDictionary }
+
+constructor TEntityWithStringDictionary.Create;
+begin
+  FDict := TMVCStringDictionary.Create;
+end;
+
+destructor TEntityWithStringDictionary.Destroy;
+begin
+  FDict.Free;
+  inherited;
+end;
 
 end.

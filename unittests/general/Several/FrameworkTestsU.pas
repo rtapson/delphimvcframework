@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -33,7 +33,8 @@ uses
   BOs,
   MVCFramework, Data.DB, System.SysUtils, MVCFramework.JWT,
   MVCFramework.Serializer.Intf, MVCFramework.Serializer.Defaults,
-  MVCFramework.MultiMap, MVCFramework.Commons, MVCFramework.Serializer.Commons;
+  MVCFramework.MultiMap, MVCFramework.Commons, MVCFramework.Serializer.Commons,
+  MVCFramework.Crypt.Utils;
 
 type
 
@@ -81,7 +82,6 @@ type
     FControllers: TObjectList<TMVCControllerDelegate>;
     FMVCActionParamsCache: TMVCStringObjectDictionary<TMVCActionParamCacheItem>;
     FConfig: TMVCConfig;
-
   public
     [SetUp]
     procedure SetUp;
@@ -100,7 +100,20 @@ type
     [Test]
     procedure TestComplexRoutings;
     [Test]
+    [Category('issues')]
     procedure Test_ISSUE_338;
+    [Test]
+    [Category('issues')]
+    procedure Test_ISSUE_513_A;
+    [Test]
+    [Category('issues')]
+    procedure Test_ISSUE_513_B;
+    [Test]
+    [Category('issues')]
+    procedure Test_ISSUE_513_C;
+    [Test]
+    [Category('issues')]
+    procedure Test_ISSUE_492;
     [Test]
     procedure TestProduceRoutings;
     [Test]
@@ -197,25 +210,98 @@ type
   [TestFixture]
   TTestNameCase = class(TObject)
   private
-    fOutDATA: array [1 .. 4] of array [ncAsIs .. ncPascalCase] of string;
-    fOrigDATA: array [1 .. 4] of string;
+    fOutDATA: array [1 .. 5] of array [ncAsIs .. ncSnakeCase] of string;
+    fOrigDATA: array [1 .. 5] of string;
   public
     [SetupFixture]
     procedure SetupFixture;
     [Test]
     procedure TestNameCase;
+
+    [Test]
+    [TestCase('LowerCase', 'onetwo,onetwo')]
+    [TestCase('LowerCaseWithUnderline', 'one_two,one_two')]
+    [TestCase('UpperCase', 'ONETWO,onetwo')]
+    [TestCase('UpperCaseWithUnderline', 'ONE_TWO,one_two')]
+    [TestCase('PascalCase', 'OneTwo,one_two')]
+    [TestCase('CamelCase', 'oneTwo,one_two')]
+    [TestCase('UPPERLower1', 'ONETwo,one_two')]
+    [TestCase('UPPERLower2', 'OneTWOThree,one_two_three')]
+    [TestCase('UPPERLower3', 'DATEOf,date_of')]
+    [TestCase('UPPERLower4', 'RESTClient,rest_client')]
+    [TestCase('UPPERLowerWithNumber1', 'OneTWO01,one_two_01')]
+    [TestCase('UPPERLowerWithNumber2', 'ONE02Three,one_02_three')]
+    [TestCase('WithSpaces1', 'One two three,one_two_three')]
+    [TestCase('WithSpaces2', 'One  two  three,one_two_three')]
+    [TestCase('WithSpaces3', 'One   two   three,one_two_three')]
+    [TestCase('WithDots1', 'One.two.three,one_two_three')]
+    [TestCase('WithDots2', 'ONE.TWO.THREE,one_two_three')]
+    [TestCase('WithDots3', 'ONE.02.THREE,one_02_three')]
+    [TestCase('WithUnderlines', 'One_two_three,one_two_three')]
+    [TestCase('MultipleUnderlines', 'One___two______three,one_two_three')]
+    [TestCase('WithNumber1', 'OneTwo1,one_two_1')]
+    [TestCase('WithNumber02', 'OneTwo02,one_two_02')]
+    [TestCase('WithNumberInTheMiddle1', 'OneTwo1Two,one_two_1_two')]
+    [TestCase('WithNumberInTheMiddle2', 'OneTwo_2two,one_two_2_two')]
+    [TestCase('WithNumberInTheMiddle3', 'OneTwo3_Two3,one_two_3_two_3')]
+    [TestCase('WithNumberInTheMiddle4', 'OneTwo_4_Two,one_two_4_two')]
+    [TestCase('WithNumberInTheMiddle5', 'OneTwo05Three,one_two_05_three')]
+    [TestCase('WithNumberInTheMiddle6', 'OneTwo_06Three,one_two_06_three')]
+    [TestCase('WithNumberInTheMiddle7', 'OneTwo07_Three,one_two_07_three')]
+    [TestCase('WithNumberInTheMiddle8', 'OneTwo_08_Three,one_two_08_three')]
+    procedure TestSnakeCase(const AValue1: string; const AValue2: string);
+
+  end;
+
+  [TestFixture]
+  TTestCryptUtils = class(TObject)
+  public
+    [SetupFixture]
+    procedure SetupFixture;
+    [Test]
+    procedure TestPBKDF2_SHA1;
+    [Test]
+    procedure TestPBKDF2_SHA256;
+  end;
+
+  [TestFixture]
+  TTestUTC = class(TObject)
+  public
+    [Test]
+    procedure TestStringToDateTime_Local;
+    [Test]
+    procedure TestStringToDateTime_in_DST_period;
+    [Test]
+    procedure TestStringToDateTime_in_no_DST_period;
+    [Test]
+    procedure TestStringToDateTime_NewYork;
+    [Test]
+    procedure TestStringToDateTime_Mumbai;
+  end;
+
+  [TestFixture]
+  TTestLRUCache = class(TObject)
+  public
+    [Test]
+    [Category('lru')]
+    procedure TestPutGet;
+    [Test]
+    [Category('lru')]
+    procedure TestPutGet_Check_No_AV;
   end;
 
 implementation
 
 {$WARN SYMBOL_DEPRECATED OFF}
 
-
-uses System.DateUtils, System.Math,
+uses
+  System.DateUtils, System.TimeSpan, System.Math,
   TestControllersU, DBClient,
   Web.HTTPApp, Soap.EncdDecd,
   IdHashMessageDigest, idHash,
+  System.Threading,
   MVCFramework.HMAC, System.Diagnostics,
+  MVCFramework.LRUCache,
 
 {$IF CompilerVersion < 27}
   Data.DBXJSON,
@@ -226,7 +312,7 @@ uses System.DateUtils, System.Math,
 {$ENDIF}
   TestServerControllerU, System.Classes,
   MVCFramework.DuckTyping, System.IOUtils, MVCFramework.SystemJSONUtils,
-  IdGlobal, System.TypInfo;
+  IdGlobal, System.TypInfo, System.Types, Winapi.Windows;
 
 var
   JWT_SECRET_KEY_TEST: string = 'myk3y';
@@ -268,22 +354,14 @@ end;
 
 procedure TTestMappers.SameFishesDataSet(ds, ds2: TDataSet);
 begin
-  Assert.areEqual(ds.FieldByName('Species No').AsInteger,
-    ds2.FieldByName('Species No').AsInteger);
-  Assert.areEqual(ds.FieldByName('Category').AsString, ds2.FieldByName('Category')
-    .AsString);
-  Assert.areEqual(ds.FieldByName('Common_Name').AsString,
-    ds2.FieldByName('Common_Name').AsString);
-  Assert.areEqual(ds.FieldByName('Species Name').AsString,
-    ds2.FieldByName('Species Name').AsString);
-  Assert.areEqual(ds.FieldByName('Length (cm)').AsString,
-    ds2.FieldByName('Length (cm)').AsString);
-  Assert.areEqual(ds.FieldByName('Length_In').AsInteger,
-    ds2.FieldByName('Length_In').AsInteger);
-  Assert.areEqual(ds.FieldByName('Notes').AsString, ds2.FieldByName('Notes')
-    .AsString);
-  Assert.areEqual(ds.FieldByName('Graphic').AsString, ds2.FieldByName('Graphic')
-    .AsString);
+  Assert.areEqual(ds.FieldByName('Species No').AsInteger, ds2.FieldByName('Species No').AsInteger);
+  Assert.areEqual(ds.FieldByName('Category').AsString, ds2.FieldByName('Category').AsString);
+  Assert.areEqual(ds.FieldByName('Common_Name').AsString, ds2.FieldByName('Common_Name').AsString);
+  Assert.areEqual(ds.FieldByName('Species Name').AsString, ds2.FieldByName('Species Name').AsString);
+  Assert.areEqual(ds.FieldByName('Length (cm)').AsString, ds2.FieldByName('Length (cm)').AsString);
+  Assert.areEqual(ds.FieldByName('Length_In').AsInteger, ds2.FieldByName('Length_In').AsInteger);
+  Assert.areEqual(ds.FieldByName('Notes').AsString, ds2.FieldByName('Notes').AsString);
+  Assert.areEqual(ds.FieldByName('Graphic').AsString, ds2.FieldByName('Graphic').AsString);
 end;
 
 procedure TTestRouting.SetUp;
@@ -306,105 +384,6 @@ begin
   FConfig.Free;
 end;
 
-// procedure TTestRouting.TestClassNameMethodNameRouting;
-// var
-// Params: TMVCRequestParamsTable;
-// ResponseContentType: string;
-// ResponseContentEncoding: string;
-// begin
-// Params := TMVCRequestParamsTable.Create;
-// try
-// Assert.isTrue(Router.ExecuteRouting('/TNotSoSimpleController/Method1', httpGET, 'text/plain', Controllers,
-// Params, ResponseContentType, ResponseContentEncoding));
-// Assert.areEqual(0, Params.Count);
-// Assert.areEqual('TSimpleController', Router.MVCControllerClass.ClassName);
-// Assert.areEqual('Index', Router.MethodToCall.Name);
-// finally
-// Params.Free;
-// end;
-// end;
-
-// procedure TTestMappers.TestCheckMapperSerializeAsStringIsEmptyStrIfObjIsNil;
-// var
-// Obj: TMyStreamObject;
-// JSONObj: TJSONObject;
-// DesObj: TMyStreamObject;
-// begin
-// // ARRANGE
-// Obj := TMyStreamObject.Create;
-// try
-// Obj.PropStream := nil;
-// Obj.Prop8Stream := nil;
-// // ACT
-// JSONObj := TSystemJSON.ObjectToJSONObject(Obj);
-// try
-// GetDefaultSerializer.de
-// DesObj := TSystemJSON.JSONObjectToObject<TMyStreamObject>(JSONObj);
-// try
-// // ASSERT
-// Assert.isTrue(TStringStream(DesObj.PropStream).DataString.IsEmpty);
-// Assert.isTrue(TStringStream(DesObj.Prop8Stream).DataString.IsEmpty);
-// finally
-// DesObj.Free;
-// end;
-// finally
-// JSONObj.Free;
-// end;
-// finally
-// Obj.Free;
-// end;
-// end;
-
-// procedure TTestMappers.TestComplexObjectToJSONObjectAndBack;
-// var
-// Obj: TMyComplexObject;
-// JObj: TJSONObject;
-// Obj2: TMyComplexObject;
-// begin
-// Obj := GetMyComplexObject;
-// try
-// JObj := Mapper.ObjectToJSONObject(Obj);
-// try
-// Obj2 := Mapper.JSONObjectToObject<TMyComplexObject>(JObj);
-// try
-// Assert.isTrue(Obj.Equals(Obj2));
-// finally
-// Obj2.Free;
-// end;
-// finally
-// JObj.Free;
-// end;
-// finally
-// Obj.Free;
-// end;
-// end;
-//
-// procedure TTestMappers.TestComplexObjectToJSONObjectAndBackWithNilReference;
-// var
-// Obj: TMyComplexObject;
-// JObj: TJSONObject;
-// Obj2: TMyComplexObject;
-// begin
-// Obj := GetMyComplexObject;
-// try
-// Obj.ChildObject.Free;
-// Obj.ChildObject := nil;
-// JObj := Mapper.ObjectToJSONObject(Obj);
-// try
-// Obj2 := Mapper.JSONObjectToObject<TMyComplexObject>(JObj);
-// try
-// Assert.isTrue(Obj.Equals(Obj2));
-// finally
-// Obj2.Free;
-// end;
-// finally
-// JObj.Free;
-// end;
-// finally
-// Obj.Free;
-// end;
-// end;
-
 procedure TTestRouting.TestComplexRoutings;
 var
   Params: TMVCRequestParamsTable;
@@ -413,34 +392,28 @@ var
 begin
   Params := TMVCRequestParamsTable.Create;
   try
-    Assert.isTrue(FRouter.ExecuteRouting('/path1/1', httpPOST, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/path1/1', httpPOST, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('TestMultiplePaths', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/path2/1/2/3', httpPOST, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/path2/1/2/3', httpPOST, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('TestMultiplePaths', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/path3/1/2/tre/3', httpPOST, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/path3/1/2/tre/3', httpPOST, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('TestMultiplePaths', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/path4/par1/2/par2/3/4', httpPOST,
-      'text/plain', 'text/plain', FControllers, 'text/plain',
-      TMVCMediaType.TEXT_PLAIN, Params, ResponseContentType,
-      ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/path4/par1/2/par2/3/4', httpPOST, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('TestMultiplePaths', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isFalse(FRouter.ExecuteRouting('/path4/par1/par2/3/4/notvalidparameter',
-      httpPOST, 'text/plain', 'text/plain', FControllers, 'text/plain',
-      TMVCMediaType.TEXT_PLAIN, Params, ResponseContentType,
+    Assert.isFalse(FRouter.ExecuteRouting('/path4/par1/par2/3/4/notvalidparameter', httpPOST, 'text/plain',
+      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType,
       ResponseContentEncoding));
     Assert.isNull(FRouter.MethodToCall);
     Assert.isFalse(Assigned(FRouter.ControllerClazz));
@@ -460,18 +433,16 @@ begin
   Params := TMVCRequestParamsTable.Create;
   try
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/projectid/pictures/imageuuid', httpGET,
-      'text/plain', 'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/issue338/projectid/pictures/imageuuid', httpGET, 'text/plain', 'text/plain',
+      FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('GetImage', FRouter.MethodToCall.Name);
     Assert.areEqual(2, Params.Count);
     Assert.areEqual('projectid', Params['projectid']);
     Assert.areEqual('imageuuid', Params['imageuuid']);
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/projectid', httpGET,
-      'text/plain', 'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/issue338/projectid', httpGET, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('GetProject', FRouter.MethodToCall.Name);
     Assert.areEqual(1, Params.Count);
     Assert.areEqual('projectid', Params['projectid']);
@@ -479,6 +450,89 @@ begin
     Params.Free;
   end;
 end;
+
+procedure TTestRouting.Test_ISSUE_492;
+var
+  Params: TMVCRequestParamsTable;
+  ResponseContentType: string;
+  ResponseContentEncoding: string;
+begin
+  // https://github.com/danieleteti/delphimvcframework/issues/492
+  Params := TMVCRequestParamsTable.Create;
+  try
+    Params.Clear;
+    Assert.isTrue(FRouter.ExecuteRouting('/issue492/delphi$mvc$framework', httpGET, 'text/plain', 'text/plain',
+      FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
+    Assert.areEqual('GetIssue492', FRouter.MethodToCall.Name);
+    Assert.areEqual(1, Params.Count);
+    Assert.areEqual('delphi$mvc$framework', Params['stringvalue']);
+  finally
+    Params.Free;
+  end;
+end;
+
+procedure TTestRouting.Test_ISSUE_513_A;
+var
+  Params: TMVCRequestParamsTable;
+  ResponseContentType: string;
+  ResponseContentEncoding: string;
+begin
+  // https://github.com/danieleteti/delphimvcframework/issues/513
+  Params := TMVCRequestParamsTable.Create;
+  try
+    Params.Clear;
+    Assert.isTrue(FRouter.ExecuteRouting('/patient/$match', httpGET, 'text/plain', 'text/plain',
+      FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
+    Assert.areEqual('GetOrderIssue513', FRouter.MethodToCall.Name);
+    Assert.areEqual(0, Params.Count);
+  finally
+    Params.Free;
+  end;
+
+end;
+
+procedure TTestRouting.Test_ISSUE_513_B;
+var
+  Params: TMVCRequestParamsTable;
+  ResponseContentType: string;
+  ResponseContentEncoding: string;
+begin
+  // https://github.com/danieleteti/delphimvcframework/issues/513
+  Params := TMVCRequestParamsTable.Create;
+  try
+    Assert.isTrue(FRouter.ExecuteRouting('/patient/$match/daniele/teti', httpGET, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
+    Assert.areEqual('GetOrderIssue513WithPars', FRouter.MethodToCall.Name);
+    Assert.areEqual(2, Params.Count);
+    Assert.areEqual('daniele', Params['par1']);
+    Assert.areEqual('teti', Params['par2']);
+  finally
+    Params.Free;
+  end;
+
+end;
+
+procedure TTestRouting.Test_ISSUE_513_C;
+var
+  Params: TMVCRequestParamsTable;
+  ResponseContentType: string;
+  ResponseContentEncoding: string;
+begin
+  // https://github.com/danieleteti/delphimvcframework/issues/513
+  Params := TMVCRequestParamsTable.Create;
+  try
+    Assert.isTrue(FRouter.ExecuteRouting('/patient/$match/da$niele/te$ti', httpGET, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
+    Assert.areEqual('GetOrderIssue513WithPars', FRouter.MethodToCall.Name);
+    Assert.areEqual(2, Params.Count);
+    Assert.areEqual('da$niele', Params['par1']);
+    Assert.areEqual('te$ti', Params['par2']);
+  finally
+    Params.Free;
+  end;
+
+end;
+
 
 // procedure TTestMappers.TestDataSetToJSONArray;
 // var
@@ -1033,10 +1087,8 @@ var
 begin
   Params := TMVCRequestParamsTable.Create;
   try
-    Assert.isTrue(FRouter.ExecuteRouting('/orders', httpGET, 'text/plain',
-      'text/plain', FControllers, 'text/plain',
-      TMVCConstants.DEFAULT_CONTENT_CHARSET, Params, ResponseContentType,
-      ResponseContentCharset));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders', httpGET, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCConstants.DEFAULT_CONTENT_CHARSET, '', Params, ResponseContentType, ResponseContentCharset));
     Assert.areEqual(0, Params.Count);
     Assert.areEqual('TSimpleController', FRouter.ControllerClazz.ClassName);
     Assert.areEqual('Orders', FRouter.MethodToCall.Name);
@@ -1067,15 +1119,12 @@ begin
   try
     lParams := TMVCRequestParamsTable.Create;
     try
-      Assert.isFalse(lRouter.ExecuteRouting('/api/orders', httpGET, 'text/plain',
-        'text/plain', FControllers, 'text/plain',
-        TMVCConstants.DEFAULT_CONTENT_CHARSET, lParams, ResponseContentType,
+      Assert.isFalse(lRouter.ExecuteRouting('/api/orders', httpGET, 'text/plain', 'text/plain', FControllers,
+        'text/plain', TMVCConstants.DEFAULT_CONTENT_CHARSET, '', lParams, ResponseContentType,
         ResponseContentEncoding));
 
-      lConfig.Value[TMVCConfigKey.PathPrefix] := '/api';
-      Assert.isTrue(lRouter.ExecuteRouting('/api/orders', httpGET, 'text/plain',
-        'text/plain', FControllers, 'text/plain',
-        TMVCConstants.DEFAULT_CONTENT_CHARSET, lParams, ResponseContentType,
+      Assert.isTrue(lRouter.ExecuteRouting('/api/orders', httpGET, 'text/plain', 'text/plain', FControllers,
+        'text/plain', TMVCConstants.DEFAULT_CONTENT_CHARSET, '/api', lParams, ResponseContentType,
         ResponseContentEncoding));
       Assert.areEqual(0, lParams.Count);
       Assert.areEqual('TSimpleController', lRouter.ControllerClazz.ClassName);
@@ -1101,9 +1150,8 @@ var
 begin
   Params := TMVCRequestParamsTable.Create;
   try
-    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpGET, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpGET, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual(1, Params.Count);
     Assert.areEqual('789', Params['ordernumber']);
     Assert.areEqual('TSimpleController', FRouter.ControllerClazz.ClassName);
@@ -1114,10 +1162,8 @@ begin
 
   Params := TMVCRequestParamsTable.Create;
   try
-    Assert.isTrue(FRouter.ExecuteRouting('/orders/àèéìòù .-_\', httpGET,
-      'text/plain', 'text/plain', FControllers, 'text/plain',
-      TMVCMediaType.TEXT_PLAIN, Params, ResponseContentType,
-      ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders/àèéìòù .-_\', httpGET, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual(1, Params.Count);
     Assert.areEqual('àèéìòù .-_\', Params['ordernumber']);
     Assert.areEqual('TSimpleController', FRouter.ControllerClazz.ClassName);
@@ -1137,9 +1183,8 @@ begin
   Params := TMVCRequestParamsTable.Create;
   try
     // a GET request with a ACCEPT: application/json
-    Assert.isTrue(FRouter.ExecuteRouting('/orders', httpGET, '', 'application/json',
-      FControllers, TMVCConstants.DEFAULT_CONTENT_TYPE,
-      TMVCConstants.DEFAULT_CONTENT_CHARSET, Params, ResponseContentType,
+    Assert.isTrue(FRouter.ExecuteRouting('/orders', httpGET, '', 'application/json', FControllers,
+      TMVCConstants.DEFAULT_CONTENT_TYPE, TMVCConstants.DEFAULT_CONTENT_CHARSET, '', Params, ResponseContentType,
       ResponseContentCharset));
     Assert.areEqual(0, Params.Count);
     Assert.areEqual('TSimpleController', FRouter.ControllerClazz.ClassName);
@@ -1159,10 +1204,9 @@ begin
   Params := TMVCRequestParamsTable.Create;
   try
     // a GET request with a ACCEPT: application/json
-    Assert.isTrue(FRouter.ExecuteRouting('/orders', httpGET, '',
-      'application/json; charset=UTF-8', FControllers,
-      TMVCConstants.DEFAULT_CONTENT_TYPE, TMVCConstants.DEFAULT_CONTENT_CHARSET,
-      Params, ResponseContentType, ResponseContentCharset));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders', httpGET, '', 'application/json; charset=UTF-8', FControllers,
+      TMVCConstants.DEFAULT_CONTENT_TYPE, TMVCConstants.DEFAULT_CONTENT_CHARSET, '', Params, ResponseContentType,
+      ResponseContentCharset));
     Assert.areEqual(0, Params.Count);
     Assert.areEqual('TSimpleController', FRouter.ControllerClazz.ClassName);
     Assert.areEqual('OrdersProduceJSON', FRouter.MethodToCall.Name);
@@ -1177,10 +1221,10 @@ var
   I: Integer;
 begin
   // this test just tests the IP2Long implementation
-  for I := low(RESERVED_IPS) to high(RESERVED_IPS) do
+  for I := low(RESERVED_IPv4) to high(RESERVED_IPv4) do
   begin
-    Assert.areEqual(IPv4ToUInt32(RESERVED_IPS[I][1]), IP2Long(RESERVED_IPS[I][1]));
-    Assert.areEqual(IPv4ToUInt32(RESERVED_IPS[I][2]), IP2Long(RESERVED_IPS[I][2]));
+    Assert.areEqual(IPv4ToUInt32(RESERVED_IPv4[I][1]), IP2Long(RESERVED_IPv4[I][1]));
+    Assert.areEqual(IPv4ToUInt32(RESERVED_IPv4[I][2]), IP2Long(RESERVED_IPv4[I][2]));
   end;
 end;
 
@@ -1377,54 +1421,48 @@ var
 begin
   Params := TMVCRequestParamsTable.Create;
   try
-    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpPOST, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpPOST, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('UpdateOrderNumber', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpPUT, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpPUT, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('UpdateOrderNumber', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpPATCH, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpPATCH, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('PatchOrder', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isFalse(FRouter.ExecuteRouting('/orders/789', httpDELETE, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isFalse(FRouter.ExecuteRouting('/orders/789', httpDELETE, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.isNull(FRouter.MethodToCall);
     Assert.isFalse(Assigned(FRouter.ControllerClazz));
 
     Params.Clear;
-    Assert.isFalse(FRouter.ExecuteRouting('/orders/789', httpHEAD, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding), 'Resolved as HEAD');
+    Assert.isFalse(FRouter.ExecuteRouting('/orders/789', httpHEAD, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding),
+      'Resolved as HEAD');
     Assert.isNull(FRouter.MethodToCall, 'Resolved as HEAD');
     Assert.isFalse(Assigned(FRouter.ControllerClazz));
 
     Params.Clear;
-    Assert.isFalse(FRouter.ExecuteRouting('/orders/789', httpOPTIONS, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding), 'Resolved as OPTIONS');
+    Assert.isFalse(FRouter.ExecuteRouting('/orders/789', httpOPTIONS, 'text/plain', 'text/plain', FControllers,
+      'text/plain', TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding),
+      'Resolved as OPTIONS');
     Assert.isNull(FRouter.MethodToCall, 'Resolved as OPTIONS');
     Assert.isFalse(Assigned(FRouter.ControllerClazz));
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpGET, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpGET, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('OrderNumber', FRouter.MethodToCall.Name);
 
     Params.Clear;
-    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpGET, 'text/plain',
-      'text/plain', FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/orders/789', httpGET, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual('OrderNumber', FRouter.MethodToCall.Name);
   finally
     Params.Free;
@@ -1439,9 +1477,8 @@ var
 begin
   Params := TMVCRequestParamsTable.Create;
   try
-    Assert.isTrue(FRouter.ExecuteRouting('/', httpGET, 'text/plain', 'text/plain',
-      FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('/', httpGET, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual(0, Params.Count);
     Assert.areEqual('TSimpleController', FRouter.ControllerClazz.ClassName);
     Assert.areEqual('Index', FRouter.MethodToCall.Name);
@@ -1458,9 +1495,8 @@ var
 begin
   Params := TMVCRequestParamsTable.Create;
   try
-    Assert.isTrue(FRouter.ExecuteRouting('', httpGET, 'text/plain', 'text/plain',
-      FControllers, 'text/plain', TMVCMediaType.TEXT_PLAIN, Params,
-      ResponseContentType, ResponseContentEncoding));
+    Assert.isTrue(FRouter.ExecuteRouting('', httpGET, 'text/plain', 'text/plain', FControllers, 'text/plain',
+      TMVCMediaType.TEXT_PLAIN, '', Params, ResponseContentType, ResponseContentEncoding));
     Assert.areEqual(0, Params.Count);
     Assert.areEqual('TSimpleController', FRouter.ControllerClazz.ClassName);
     Assert.areEqual('Index', FRouter.MethodToCall.Name);
@@ -1506,9 +1542,8 @@ procedure TTestJWT.TestDefaults;
 begin
   Assert.areEqual('HS512', FJWT.HMACAlgorithm, 'Default algorithm should be HS512');
   Assert.areEqual(300, FJWT.LeewaySeconds, 'Default leeway should be 5 minutes');
-  if FJWT.RegClaimsToChecks * [TJWTCheckableClaim.ExpirationTime,
-    TJWTCheckableClaim.NotBefore, TJWTCheckableClaim.IssuedAt] <>
-    [TJWTCheckableClaim.ExpirationTime, TJWTCheckableClaim.NotBefore,
+  if FJWT.RegClaimsToChecks * [TJWTCheckableClaim.ExpirationTime, TJWTCheckableClaim.NotBefore,
+    TJWTCheckableClaim.IssuedAt] <> [TJWTCheckableClaim.ExpirationTime, TJWTCheckableClaim.NotBefore,
     TJWTCheckableClaim.IssuedAt] then
     Assert.Fail('Default RegClaimsToCheck not correct');
 end;
@@ -1521,23 +1556,19 @@ begin
   FJWT.RegClaimsToChecks := [TJWTCheckableClaim.ExpirationTime];
   FJWT.Claims.ExpirationTime := Tomorrow;
   lToken := FJWT.GetToken;
-  Assert.isTrue(FJWT.LoadToken(lToken, lError),
-    'Valid token is considered expired');
+  Assert.isTrue(FJWT.LoadToken(lToken, lError), 'Valid token is considered expired');
 
   FJWT.Claims.ExpirationTime := Yesterday;
   lToken := FJWT.GetToken;
-  Assert.isFalse(FJWT.LoadToken(lToken, lError),
-    'Expired token is considered valid');
+  Assert.isFalse(FJWT.LoadToken(lToken, lError), 'Expired token is considered valid');
 
   FJWT.Claims.ExpirationTime := Now;
   lToken := FJWT.GetToken;
-  Assert.isTrue(FJWT.LoadToken(lToken, lError),
-    'Valid token is considered expired');
+  Assert.isTrue(FJWT.LoadToken(lToken, lError), 'Valid token is considered expired');
 
   FJWT.Claims.ExpirationTime := Now - (FJWT.LeewaySeconds + 1) * OneSecond;
   lToken := FJWT.GetToken;
-  Assert.isFalse(FJWT.LoadToken(lToken, lError),
-    'Expired token is considered valid');
+  Assert.isFalse(FJWT.LoadToken(lToken, lError), 'Expired token is considered valid');
 end;
 
 procedure TTestJWT.TestHMAC;
@@ -1550,8 +1581,7 @@ begin
   begin
     lAlg := HMAC_ALG_AND_RESULTS[I][0];
     lValue := HMAC_ALG_AND_RESULTS[I][1];
-    Assert.areEqual(lValue, BytesToHex(HMAC(lAlg, 'Daniele Teti', 'daniele')),
-      'HMAC ' + lAlg + ' fails');
+    Assert.areEqual(lValue, BytesToHex(HMAC(lAlg, 'Daniele Teti', 'daniele')), 'HMAC ' + lAlg + ' fails');
   end;
 end;
 
@@ -1563,23 +1593,19 @@ begin
   FJWT.RegClaimsToChecks := [TJWTCheckableClaim.IssuedAt];
   FJWT.Claims.IssuedAt := Yesterday;
   lToken := FJWT.GetToken;
-  Assert.isTrue(FJWT.LoadToken(lToken, lError),
-    'Valid token is considered not valid');
+  Assert.isTrue(FJWT.LoadToken(lToken, lError), 'Valid token is considered not valid');
 
   FJWT.Claims.IssuedAt := Tomorrow;
   lToken := FJWT.GetToken;
-  Assert.isFalse(FJWT.LoadToken(lToken, lError),
-    'Still-not-valid token is considered valid');
+  Assert.isFalse(FJWT.LoadToken(lToken, lError), 'Still-not-valid token is considered valid');
 
   FJWT.Claims.IssuedAt := Now;
   lToken := FJWT.GetToken;
-  Assert.isTrue(FJWT.LoadToken(lToken, lError),
-    'Valid token is considered not valid');
+  Assert.isTrue(FJWT.LoadToken(lToken, lError), 'Valid token is considered not valid');
 
   FJWT.Claims.IssuedAt := Now + (FJWT.LeewaySeconds + 1) * OneSecond;
   lToken := FJWT.GetToken;
-  Assert.isFalse(FJWT.LoadToken(lToken, lError),
-    'Still-not-valid token is considered valid');
+  Assert.isFalse(FJWT.LoadToken(lToken, lError), 'Still-not-valid token is considered valid');
 end;
 
 procedure TTestJWT.TestLoadToken;
@@ -1608,12 +1634,9 @@ begin
     Assert.areEqual('DelphiMVCFramework', lJWT.Claims.Subject);
     Assert.areEqual('DelphiDevelopers', lJWT.Claims.Audience);
     Assert.areEqual('123456', lJWT.Claims.JWT_ID);
-    Assert.areEqual(EncodeDateTime(2011, 11, 17, 17, 30, 0, 0),
-      lJWT.Claims.IssuedAt);
-    Assert.areEqual(Roundto(lJWT.Claims.IssuedAt + OneHour * 2, 4),
-      Roundto(lJWT.Claims.ExpirationTime, 4));
-    Assert.areEqual(EncodeDateTime(2011, 11, 17, 17, 30, 0, 0),
-      lJWT.Claims.NotBefore);
+    Assert.areEqual(EncodeDateTime(2011, 11, 17, 17, 30, 0, 0), lJWT.Claims.IssuedAt);
+    Assert.areEqual(Roundto(lJWT.Claims.IssuedAt + OneHour * 2, 4), Roundto(lJWT.Claims.ExpirationTime, 4));
+    Assert.areEqual(EncodeDateTime(2011, 11, 17, 17, 30, 0, 0), lJWT.Claims.NotBefore);
     Assert.areEqual('dteti', lJWT.CustomClaims['username']);
     Assert.areEqual('admin', lJWT.CustomClaims['userrole']);
   finally
@@ -1630,8 +1653,7 @@ begin
   FJWT.RegClaimsToChecks := [TJWTCheckableClaim.NotBefore];
   FJWT.Claims.NotBefore := Yesterday;
   lToken := FJWT.GetToken;
-  Assert.isTrue(FJWT.LoadToken(lToken, lError),
-    'Valid token is considered not valid');
+  Assert.isTrue(FJWT.LoadToken(lToken, lError), 'Valid token is considered not valid');
 
   FJWT.Claims.NotBefore := Tomorrow;
   lToken := FJWT.GetToken;
@@ -1640,13 +1662,11 @@ begin
 
   FJWT.Claims.NotBefore := Now;
   lToken := FJWT.GetToken;
-  Assert.isTrue(FJWT.LoadToken(lToken, lError),
-    'Valid token is considered not valid');
+  Assert.isTrue(FJWT.LoadToken(lToken, lError), 'Valid token is considered not valid');
 
   FJWT.Claims.NotBefore := Now + (FJWT.LeewaySeconds + 1) * OneSecond;
   lToken := FJWT.GetToken;
-  Assert.isFalse(FJWT.LoadToken(lToken, lError),
-    'Still-not-valid token is considered valid');
+  Assert.isFalse(FJWT.LoadToken(lToken, lError), 'Still-not-valid token is considered valid');
 end;
 
 procedure TTestJWT.TestStorage;
@@ -1666,10 +1686,8 @@ begin
   Assert.areEqual('DelphiDevelopers', FJWT.Claims.Audience);
   Assert.areEqual('123456', FJWT.Claims.JWT_ID);
   Assert.areEqual(EncodeDateTime(2011, 11, 17, 17, 30, 0, 0), FJWT.Claims.IssuedAt);
-  Assert.areEqual(Roundto(FJWT.Claims.IssuedAt + OneHour * 2, 4),
-    Roundto(FJWT.Claims.ExpirationTime, 4));
-  Assert.areEqual(EncodeDateTime(2011, 11, 17, 17, 30, 0, 0),
-    FJWT.Claims.NotBefore);
+  Assert.areEqual(Roundto(FJWT.Claims.IssuedAt + OneHour * 2, 4), Roundto(FJWT.Claims.ExpirationTime, 4));
+  Assert.areEqual(EncodeDateTime(2011, 11, 17, 17, 30, 0, 0), FJWT.Claims.NotBefore);
 
   Assert.areEqual('dteti', FJWT.CustomClaims['username']);
   Assert.areEqual('admin', FJWT.CustomClaims['userrole']);
@@ -1712,9 +1730,7 @@ begin
   end;
 end;
 
-procedure TMVCSerUnSerTestCase.SetSerializer(
-  const
-  ASerializer: IMVCSerializer);
+procedure TMVCSerUnSerTestCase.SetSerializer(const ASerializer: IMVCSerializer);
 begin
   FSerializer := ASerializer;
 end;
@@ -1743,7 +1759,7 @@ var
   lMultiMap: IMVCInterfaceMultiMap<IMyInterface>;
 begin
   lMultiMap := TMVCInterfaceMultiMap<IMyInterface>.Create;
-  Assert.areEqual(0, Length(lMultiMap.Keys));
+  Assert.AreEqual<Integer>(0, Length(lMultiMap.Keys));
   lMultiMap.Clear;
   Assert.isFalse(lMultiMap.Contains('key1'));
   lMultiMap.Add('key1', TMyIntfObject.Create(1, 'value1'));
@@ -1777,7 +1793,7 @@ var
   lMultiMap: IMVCObjectMultiMap<TMyClass>;
 begin
   lMultiMap := TMVCObjectMultiMap<TMyClass>.Create;
-  Assert.areEqual(0, Length(lMultiMap.Keys));
+  Assert.AreEqual<Integer>(0, Length(lMultiMap.Keys));
   lMultiMap.Clear;
   Assert.isFalse(lMultiMap.Contains('key1'));
   lMultiMap.Add('key1', TMyClass.Create(1, 'value1'));
@@ -1810,35 +1826,48 @@ end;
 
 procedure TTestNameCase.SetupFixture;
 begin
-  fOrigDATA[1] := 'one_two';
+  fOrigDATA[1] := 'one_two_3or4';
   fOrigDATA[2] := 'ONE_TWO_THREE';
   fOrigDATA[3] := 'JustOne';
   fOrigDATA[4] := '_with__underscores_';
+  fOrigDATA[5] := 'oneTwo___three04';
 
   fOutDATA[1][ncAsIs] := fOrigDATA[1];
   fOutDATA[2][ncAsIs] := fOrigDATA[2];
   fOutDATA[3][ncAsIs] := fOrigDATA[3];
   fOutDATA[4][ncAsIs] := fOrigDATA[4];
+  fOutDATA[5][ncAsIs] := fOrigDATA[5];
 
-  fOutDATA[1][ncUpperCase] := 'ONE_TWO';
+  fOutDATA[1][ncUpperCase] := 'ONE_TWO_3OR4';
   fOutDATA[2][ncUpperCase] := 'ONE_TWO_THREE';
   fOutDATA[3][ncUpperCase] := 'JUSTONE';
   fOutDATA[4][ncUpperCase] := '_WITH__UNDERSCORES_';
+  fOutDATA[5][ncUpperCase] := 'ONETWO___THREE04';
 
-  fOutDATA[1][ncLowerCase] := 'one_two';
+  fOutDATA[1][ncLowerCase] := 'one_two_3or4';
   fOutDATA[2][ncLowerCase] := 'one_two_three';
   fOutDATA[3][ncLowerCase] := 'justone';
   fOutDATA[4][ncLowerCase] := '_with__underscores_';
+  fOutDATA[5][ncLowerCase] := 'onetwo___three04';
 
-  fOutDATA[1][ncCamelCase] := 'oneTwo';
+  fOutDATA[1][ncCamelCase] := 'oneTwo3Or4';
   fOutDATA[2][ncCamelCase] := 'oneTwoThree';
   fOutDATA[3][ncCamelCase] := 'justOne';
   fOutDATA[4][ncCamelCase] := 'WithUnderscores';
+  fOutDATA[5][ncCamelCase] := 'oneTwoThree04';
 
-  fOutDATA[1][ncPascalCase] := 'OneTwo';
+  fOutDATA[1][ncPascalCase] := 'OneTwo3Or4';
   fOutDATA[2][ncPascalCase] := 'OneTwoThree';
   fOutDATA[3][ncPascalCase] := 'JustOne';
   fOutDATA[4][ncPascalCase] := 'WithUnderscores';
+  fOutDATA[5][ncPascalCase] := 'OneTwoThree04';
+
+  fOutDATA[1][ncSnakeCase] := 'one_two_3_or_4';
+  fOutDATA[2][ncSnakeCase] := 'one_two_three';
+  fOutDATA[3][ncSnakeCase] := 'just_one';
+  fOutDATA[4][ncSnakeCase] := '_with_underscores_';
+  fOutDATA[5][ncSnakeCase] := 'one_two_three_04';
+
 end;
 
 procedure TTestNameCase.TestNameCase;
@@ -1849,9 +1878,9 @@ var
   lOutData: string;
   lActualOutData: string;
 begin
-  for lNameCaseIdx := ncAsIs to ncPascalCase do
+  for lNameCaseIdx := ncAsIs to ncSnakeCase do
   begin
-    for I := 1 to 4 do
+    for I := 1 to 5 do
     begin
       lOrig := fOrigDATA[I];
       lOutData := fOutDATA[I][lNameCaseIdx];
@@ -1862,6 +1891,263 @@ begin
   end;
 end;
 
+procedure TTestNameCase.TestSnakeCase(const AValue1, AValue2: string);
+begin
+  Assert.areEqual(AValue2, SnakeCase(AValue1));
+end;
+
+{ TTestCryptUtils }
+
+procedure TTestCryptUtils.SetupFixture;
+begin
+  MVCCryptInit;
+end;
+
+procedure TTestCryptUtils.TestPBKDF2_SHA1;
+var
+  P: TBytes;
+  S: TBytes;
+  K: TBytes;
+begin
+  // https://www.freecodeformat.com/pbkdf2.php
+  P := TBytes.Create($70, $61, $73, $73, $77, $6F, $72, $64);
+  S := TBytes.Create($78, $57, $8E, $5A, $5D, $63, $CB, $06);
+
+  K := PBKDF2(P, S, 2048, 24);
+  Assert.areEqual('BFDE6BE94DF7E11DD409BCE20A0255EC327CB936FFE93643', BytesToHexString(K));
+
+  P := TBytes.Create($70, $61, $73, $73, $77, $6F, $72, $64);
+  S := TBytes.Create($73, $61, $6C, $74);
+
+  K := PBKDF2(P, S, 1, 20);
+  Assert.areEqual('0C60C80F961F0E71F3A9B524AF6012062FE037A6', BytesToHexString(K));
+  K := PBKDF2(P, S, 2, 20);
+  Assert.areEqual('EA6C014DC72D6F8CCD1ED92ACE1D41F0D8DE8957', BytesToHexString(K));
+  K := PBKDF2(P, S, 4096, 20);
+  Assert.areEqual('4B007901B765489ABEAD49D926F721D065A429C1', BytesToHexString(K));
+  // K := PBKDF2(P, S, 16777216, 20);
+  // Assert.AreEqual('EEFE3D61CD4DA4E4E9945B3D6BA2158C2634E984', BytesToHexString(K));
+
+  P := TBytes.Create($70, $61, $73, $73, $77, $6F, $72, $64, $50, $41, $53, $53, $57, $4F, $52, $44, $70, $61, $73, $73,
+    $77, $6F, $72, $64);
+  S := TBytes.Create($73, $61, $6C, $74, $53, $41, $4C, $54, $73, $61, $6C, $74, $53, $41, $4C, $54, $73, $61, $6C, $74,
+    $53, $41, $4C, $54, $73, $61, $6C, $74, $53, $41, $4C, $54, $73, $61, $6C, $74);
+
+  K := PBKDF2(P, S, 4096, 25);
+  Assert.areEqual('3D2EEC4FE41C849B80C8D83662C0E44A8B291A964CF2F07038', BytesToHexString(K));
+end;
+
+procedure TTestCryptUtils.TestPBKDF2_SHA256;
+var
+  lPassword: string;
+  lSalt: string;
+  lOut: TBytes;
+begin
+  lPassword := 'daniele.teti';
+  lSalt := 'thisissomesalt';
+  lOut := PBKDF2(TEncoding.ASCII.GetBytes(lPassword), TEncoding.ASCII.GetBytes(lSalt), 50, 512 div 8);
+  // https://www.freecodeformat.com/pbkdf2.php
+  Assert.areEqual
+    ('caca227458fe66cf8c19f2d943190feca54fd403b966189d6c7befc3bc856e2d5218d825e91912058fdbdb488dbe4ae3e7be5f59318b03d805857440017ee440',
+    BytesToHexString(lOut));
+end;
+
+{ TTestUTC }
+
+procedure TTestUTC.TestStringToDateTime_Local;
+var
+  lDate, lDateToCompare: TDateTime;
+  s1,s2: string;
+begin
+  // Local time
+  lDate := ISOTimeStampToDateTime('2020-11-04T12:12:12');
+  Assert.areEqual<TDateTime>(EncodeDateTime(2020, 11, 4, 12, 12, 12, 0), lDate);
+
+  // UTC with no time zone (in a DST period)
+  lDate := ISOTimeStampToDateTime('2020-08-15T12:12:12Z');
+  lDateToCompare := TTimeZone.Local.ToLocalTime(EncodeDateTime(2020, 8, 15, 12, 12, 12, 0));
+  s1 := DateTimeToStr(lDate);
+  s2 := DateTimeToStr(lDateToCompare);
+  Assert.areEqual(s1,s2, 'UTC with no time zone (in DST period)');
+
+
+  // UTC with no time zone (in no DST period)
+  lDate := ISOTimeStampToDateTime('2020-11-04T12:12:12Z');
+  lDateToCompare := TTimeZone.Local.ToLocalTime(EncodeDateTime(2020, 11, 04, 12, 12, 12, 0));
+  s1 := DateTimeToStr(lDate);
+  s2 := DateTimeToStr(lDateToCompare);
+  Assert.areEqual(s1,s2, 'UTC with no time zone (in no DST period)');
+end;
+
+procedure TTestUTC.TestStringToDateTime_in_DST_period;
+var
+  lDate, lDateToCompare: TDateTime;
+  s1,s2: string;
+begin
+  // UTC with no time zone (in a DST period)
+  lDate := ISOTimeStampToDateTime('2020-08-15T12:12:12Z');
+  lDateToCompare := TTimeZone.Local.ToLocalTime(EncodeDateTime(2020, 8, 15, 12, 12, 12, 0));
+  s1 := DateTimeToStr(lDate);
+  s2 := DateTimeToStr(lDateToCompare);
+  Assert.areEqual(s1,s2, 'UTC with no time zone (in DST period)');
+end;
+
+procedure TTestUTC.TestStringToDateTime_in_no_DST_period;
+var
+  lDate, lDateToCompare: TDateTime;
+  s1,s2: string;
+begin
+  // UTC with no time zone (in no DST period)
+  lDate := ISOTimeStampToDateTime('2020-11-04T12:12:12Z');
+  lDateToCompare := TTimeZone.Local.ToLocalTime(EncodeDateTime(2020, 11, 04, 12, 12, 12, 0));
+  s1 := DateTimeToStr(lDate);
+  s2 := DateTimeToStr(lDateToCompare);
+  Assert.areEqual(s1,s2, 'UTC with no time zone (in no DST period)');
+end;
+
+
+procedure TTestUTC.TestStringToDateTime_Mumbai;
+var
+  lDate: TDateTime;
+begin
+  // UTC "+05:30" for Mumbai (UTC+05:30)
+  lDate := ISOTimeStampToDateTime('2020-11-04T12:12:12+05:30');
+  Assert.areEqual(DateTimeToStr(EncodeDateTime(2020, 11, 4, 7, 42, 12, 0)), DateTimeToStr(lDate));
+end;
+
+procedure TTestUTC.TestStringToDateTime_NewYork;
+var
+  lDate: TDateTime;
+begin
+  // UTC "−05:00" for New York on standard time (UTC-05:00)
+  lDate := ISOTimeStampToDateTime('2020-11-04T12:12:12-05:00');
+  Assert.areEqual(DateTimeToStr(EncodeDateTime(2020, 11, 4, 18, 12, 12, 0)), DateTimeToStr(lDate));
+end;
+
+{ TTestLRUCache }
+
+procedure TTestLRUCache.TestPutGet;
+var
+  lCache: TMVCLRUCache<TMyObject>;
+  I: Integer;
+  lMyObj: TMyObject;
+  lItemIndex: UInt64;
+begin
+  lCache := TMVCLRUCache<TMyObject>.Create(5);
+  try
+    lCache.Lock;
+    try
+      for I := 1 to 100 do
+      begin
+        Assert.isFalse(lCache.Contains(I.ToString, lItemIndex));
+      end;
+
+      for I := 1 to 100 do
+      begin
+        lMyObj := TMyObject.Create;
+        lMyObj.PropString := I.ToString;
+        lCache.Put(I.ToString, lMyObj);
+        Assert.isTrue(lCache.Contains(I.ToString, lItemIndex));
+        Assert.isTrue(lCache.TryGet(I.ToString, lMyObj));
+        Assert.AreEqual(I.ToString, lMyObj.PropString);
+      end;
+      Assert.areEqual(5, lCache.Size);
+    finally
+      lCache.UnLock;
+    end;
+    lCache.Lock;
+    try
+      Assert.isTrue(lCache.Contains('100', lItemIndex));
+      Assert.isTrue(lCache.Contains('99', lItemIndex));
+      Assert.isTrue(lCache.Contains('98', lItemIndex));
+      Assert.isTrue(lCache.Contains('97', lItemIndex));
+      Assert.isTrue(lCache.Contains('96', lItemIndex));
+      for I := 95 downto -10 do
+      begin
+        Assert.isFalse(lCache.Contains(I.ToString, lItemIndex));
+      end;
+      for I := 101 to 105 do
+      begin
+        Assert.isFalse(lCache.Contains(I.ToString, lItemIndex));
+      end;
+    finally
+      lCache.UnLock;
+    end;
+  finally
+    lCache.Free;
+  end;
+end;
+
+procedure TTestLRUCache.TestPutGet_Check_No_AV;
+var
+  lCache: TMVCLRUCache<TMyObject>;
+  lMyObj: TMyObject;
+  lProducer1, lProducer2, lProducer3, lProducer4: ITask;
+  lProcProducer, lProcConsumer: TProc;
+  lConsumer1, lConsumer2, lConsumer3, lConsumer4: ITask;
+begin
+  lCache := TMVCLRUCache<TMyObject>.Create(10);
+  try
+    lProcProducer := procedure
+      var
+        T, J: Integer;
+        lKey: string;
+      begin
+        for T := 1 to 50 do
+        begin
+          Sleep(T * 5);
+          lCache.Lock;
+          try
+            for J := 1 to 100 do
+            begin
+              lMyObj := TMyObject.Create;
+              lKey := T.ToString + '|' + J.ToString;
+              lMyObj.PropString := lKey;
+              lCache.Put(lKey, lMyObj);
+            end;
+          finally
+            lCache.UnLock;
+          end;
+        end;
+      end;
+
+    lProcConsumer := procedure
+      var
+        T, J: Integer;
+        lKey: string;
+      begin
+        for T := 1 to 20 do
+        begin
+          Sleep(T * 10);
+          lCache.Lock;
+          try
+            for J := T to T + 100 do
+            begin
+              lKey := T.ToString + '|' + J.ToString;
+              lCache.TryGet(lKey, lMyObj);
+            end;
+          finally
+            lCache.UnLock;
+          end;
+        end;
+      end;
+
+    lProducer1 := TTask.Run(lProcProducer).Start; // Thread
+    lProducer2 := TTask.Run(lProcProducer).Start; // Thread
+    lProducer3 := TTask.Run(lProcProducer).Start; // Thread
+    lProducer4 := TTask.Run(lProcProducer).Start; // Thread
+
+    lConsumer1 := TTask.Run(lProcConsumer).Start; // Thread
+    lConsumer2 := TTask.Run(lProcConsumer).Start; // Thread
+    lConsumer3 := TTask.Run(lProcConsumer).Start; // Thread
+    lConsumer4 := TTask.Run(lProcConsumer).Start; // Thread
+    TTask.WaitForAll([lProducer1, lProducer2, lProducer3, lProducer4, lConsumer1, lConsumer2, lConsumer3, lConsumer4]);
+    Assert.Pass('No Exception raised');
+  finally
+    lCache.Free;
+  end;
+end;
+
 initialization
 
 TDUnitX.RegisterTestFixture(TTestRouting);
@@ -1869,6 +2155,8 @@ TDUnitX.RegisterTestFixture(TTestRouting);
 TDUnitX.RegisterTestFixture(TTestJWT);
 TDUnitX.RegisterTestFixture(TTestMultiMap);
 TDUnitX.RegisterTestFixture(TTestNameCase);
+TDUnitX.RegisterTestFixture(TTestCryptUtils);
+TDUnitX.RegisterTestFixture(TTestLRUCache);
 
 finalization
 

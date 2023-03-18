@@ -4,14 +4,12 @@ object dmMain: TdmMain
   Width = 438
   object Connection: TFDConnection
     Params.Strings = (
-      
-        'Database=C:\DEV\dmvcframework\samples\data\ORDERSMANAGER_FB30.FD' +
-        'B'
+      'Database=C:\DEV\dmvcframework\samples\data\ACTIVERECORDDB.FDB'
       'User_Name=sysdba'
       'Password=masterkey'
       'Protocol=TCPIP'
       'Server=localhost'
-      'DriverID=FB')
+      'ConnectionDef=articles_crud_db')
     ConnectedStoredUsage = []
     LoginPrompt = False
     BeforeConnect = ConnectionBeforeConnect

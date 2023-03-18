@@ -1,8 +1,9 @@
 // ***************************************************************************
+// ***************************************************************************
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2020 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -47,12 +48,22 @@ type
     FWebModuleClassName : string;
     FControllerClassName: string;
     FControllerUnit: string;
+    FJSONRPCClassName: string;
+    FJSONRPCClassUnit: string;
     FUseSpring4DContainer: Boolean;
     function GetCreatorType: string; override;
     function NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile; override;
     function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile; override;
   public
-    constructor Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; const bUseSpring4DContainer: Boolean);
+    constructor Create(
+      const aWebModuleClassName: string;
+      const aControllerClassName: string;
+      const aControllerUnit: string;
+      const aMiddlewares: TArray<String>;
+      const aJSONRPCClassName: String;
+      const aJSONRPCClassUnit: String;
+      const aPersonality : String;
+	    const bUseSpring4DContainer: Boolean);
   end;
 
 implementation
@@ -64,20 +75,31 @@ uses
   DMVC.Expert.CodeGen.Templates,
   DMVC.Expert.CodeGen.SourceFile;
 
-constructor TNewWebModuleUnitEx.Create(const aWebModuleClassName: string; aControllerClassName: string; aControllerUnit: string; const aMiddlewares: TArray<String>; const APersonality : String; const bUseSpring4DContainer: Boolean);
+constructor TNewWebModuleUnitEx.Create(
+      const aWebModuleClassName: string;
+      const aControllerClassName: string;
+      const aControllerUnit: string;
+      const aMiddlewares: TArray<String>;
+      const aJSONRPCClassName: String;
+      const aJSONRPCClassUnit: String;
+      const aPersonality : String;
+      const bUseSpring4DContainer: Boolean);
 begin
   Assert(Length(aWebModuleClassName) > 0);
   FAncestorName := '';
   FFormName := '';
   FImplFileName := '';
   FIntfFileName := '';
+  FJSONRPCClassName := aJSONRPCClassName;
+  FJSONRPCClassUnit := aJSONRPCClassUnit;
   FWebModuleClassName := aWebModuleClassName;
   FControllerClassName := aControllerClassName;
   FControllerUnit := aControllerUnit;
   FMiddlewares := AMiddlewares;
   FUseSpring4DContainer := bUseSpring4DContainer;
   Personality := APersonality;
-  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName( '', FUnitIdent, FFormName, FFileName);
+  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName(
+    '', FUnitIdent, FFormName, FFileName);
 end;
 
 function TNewWebModuleUnitEx.GetCreatorType: string;
@@ -91,14 +113,49 @@ begin
 end;
 
 function TNewWebModuleUnitEx.NewImplSource(const ModuleIdent, FormIdent,  AncestorIdent: string): IOTAFile;
+var
+  lJSONRPCCode: string;
+  lMiddlewaresCode: String;
+  I: Integer;
 begin
+  lMiddlewaresCode := sLineBreak;
+  for I := Low(FMiddlewares) to High(FMiddlewares) do
+  begin
+    lMiddlewaresCode := lMiddlewaresCode + '  ' + FMiddlewares[I] + sLineBreak;
+  end;
+
+  lJSONRPCCode := '';
+  if not FJSONRPCClassName.IsEmpty then
+  begin
+    lJSONRPCCode := 'FMVC.PublishObject( ' + sLineBreak +
+    '    function : TObject ' + sLineBreak +
+    '    begin ' + sLineBreak +
+    '      Result := ' + FJSONRPCClassName + '.Create; ' + sLineBreak +
+    '    end, ''/jsonrpc'');' + sLineBreak + sLineBreak;
+  end;
+
   //ModuleIdent is blank for some reason.
   // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
   // So using method mentioned by Marco Cantu.
+  if not lJSONRPCCode.IsEmpty then
+  begin
+    if not FJSONRPCClassUnit.IsEmpty then
+    begin
+      FJSONRPCClassUnit := FJSONRPCClassUnit + ',';
+    end;
+  end;
+
   if FUseSpring4DContainer then
     Result := TSourceFile.Create(sSpring4DWebModule, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares])
   else
-    Result := TSourceFile.Create(sWebModuleUnit, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares]);
+    Result := TSourceFile.Create(sWebModuleUnit, [
+      FUnitIdent,
+      FWebModuleClassName,
+      FControllerUnit,
+      FControllerClassName,
+      lMiddlewaresCode,
+      lJSONRPCCode,
+      FJSONRPCClassUnit]);
 end;
 
 
