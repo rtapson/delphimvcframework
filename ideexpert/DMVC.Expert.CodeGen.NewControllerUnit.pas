@@ -133,10 +133,17 @@ begin
     lActionFiltersMethodsImpl := '';
   end;
 
-  // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
-  // So using method mentioned by Marco Cantu.
-  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('',
-    lUnitIdent, lFormName, lFileName);
+  if ModuleIdent = '' then
+  begin
+    // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
+    // So using method mentioned by Marco Cantu.
+    (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('',
+      lUnitIdent, lFormName, lFileName);
+  end
+  else
+  begin
+    lUnitIdent := ModuleIdent;
+  end;
   Result := TSourceFile.Create(sControllerUnit,
     [lUnitIdent, FControllerClassName, lIndexMethodIntf, lIndexMethodImpl, lActionFiltersMethodsIntf, lActionFiltersMethodsImpl, lCRUDMethodsIntf, lCRUDMethodsImpl]);
 end;

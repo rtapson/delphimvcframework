@@ -44,9 +44,28 @@ uses
   VCL.Controls,
   VCL.Forms,
   VCL.Dialogs,
-  VCL.StdCtrls;
+  VCL.StdCtrls, Vcl.ComCtrls, Vcl.ButtonGroup, System.Actions, Vcl.ActnList,
+  Vcl.CheckLst;
 
 type
+  TAureliusListItem = class
+  private
+    FFileName: string;
+    FEntityName: string;
+    FClassName: string;
+    FEntityUnitName: string;
+  public
+    constructor Create(
+      const FileName: string;
+      const EntityName: string;
+      const ClassName: string;
+      const EntityUnitName: string);
+    property FileName: string read FFileName;
+    property EntityName: string read FEntityName;
+    property ClassName: string read FClassName;
+    property EnityUnitName: string read FEntityUnitName;
+  end;
+
   TfrmDMVCNewUnit = class(TForm)
     GroupBox1: TGroupBox;
     btnOK: TButton;
@@ -56,13 +75,34 @@ type
     chkCreateIndexMethod: TCheckBox;
     chkCreateActionFiltersMethods: TCheckBox;
     chkCreateCRUDMethods: TCheckBox;
+    PageControl1: TPageControl;
+    StartTabSheet: TTabSheet;
+    AureliusTabSheet: TTabSheet;
+    OptionsTabSheet: TTabSheet;
+    ButtonGroup1: TButtonGroup;
+    Label1: TLabel;
+    ActionList: TActionList;
+    DMVCAction: TAction;
+    AureliusAction: TAction;
+    AureliusEntitiesCheckListBox: TCheckListBox;
+    Label2: TLabel;
+    Button1: TButton;
+    AureliusSelectButton: TButton;
     procedure FormCreate(Sender: TObject);
+    procedure DMVCActionExecute(Sender: TObject);
+    procedure AureliusActionExecute(Sender: TObject);
+    procedure Button1Click(Sender: TObject);
+    procedure AureliusSelectButtonClick(Sender: TObject);
   private
     function GetCreateIndexMethod: boolean;
     function GetControllerClassName: string;
     function GetCreateActionFiltersMethods: boolean;
     function GetCreateCRUDMethods: boolean;
     function GetAddAnalyticsMiddleware: boolean;
+
+    function AureliusInstalled: Boolean;
+    procedure ScanFile(const FileName: string);
+    function UnitHasAureliusEntities(const FileName: string): Boolean;
     { Private declarations }
   public
     { Public declarations }
@@ -80,13 +120,25 @@ var
 implementation
 
 uses
+  Toolsapi,
+  Registry,
+  IOUtils,
   DMVC.Expert.CodeGen.Templates;
 
 {$R *.dfm}
 
+procedure TfrmDMVCNewUnit.DMVCActionExecute(Sender: TObject);
+begin
+  PageControl1.ActivePage := OptionsTabSheet;
+end;
+
 procedure TfrmDMVCNewUnit.FormCreate(Sender: TObject);
 begin
   edtClassName.TextHint := sDefaultControllerName;
+  if AureliusInstalled then
+    PageControl1.ActivePage := StartTabSheet
+  else
+    PageControl1.ActivePage := OptionsTabSheet;
 end;
 
 function TfrmDMVCNewUnit.GetCreateActionFiltersMethods: boolean;
@@ -104,6 +156,127 @@ begin
   Result := chkCreateIndexMethod.Checked;
 end;
 
+procedure TfrmDMVCNewUnit.ScanFile(const FileName: string);
+var
+  FileContents: TStringList;
+  SourceLine: string;
+  EntityFound: Boolean;
+  EntityName: string;
+  ClassName: string;
+  EntityUnitName: string;
+begin
+  FileContents := TStringList.Create;
+  try
+    FileContents.LoadFromFile(FileName);
+    for SourceLine in FileContents do
+    begin
+      if not EntityFound then EntityFound := SourceLine.Contains('[Entity]');
+
+      if SourceLine.Contains('[Table(') then
+      begin
+        EntityName := SourceLine.Remove(SourceLine.IndexOf(')') - 1).Remove(1, SourceLine.IndexOf('(') + 1).TrimEnd(['s']).TrimLeft;
+      end;
+      if SourceLine.Contains('class(') then
+      begin
+        ClassName := SourceLine.SubString(1, SourceLine.IndexOf('=') - 2).TrimLeft;
+
+        EntityUnitName := TPath.GetFileNameWithoutExtension(FileName);
+
+        if EntityName = '' then Exit;
+
+        if EntityFound then
+          AureliusEntitiesCheckListBox.Items.AddObject(
+            EntityName,
+            TAureliusListItem.Create(FileName, EntityName, ClassName, EntityUnitName));
+
+//        if EntityFound then
+//          BuildController(ControllerFolder, TemplateFolder, EntityName, ClassName, EntityUnitName);
+
+        EntityFound := False;
+      end;
+    end;
+
+  finally
+    FileContents.Free;
+  end;
+end;
+
+function TfrmDMVCNewUnit.UnitHasAureliusEntities(const FileName: string): Boolean;
+begin
+
+end;
+
+procedure TfrmDMVCNewUnit.AureliusActionExecute(Sender: TObject);
+var
+  ModuleServices: IOTAModuleServices;
+  Project: IOTAProject;
+//  ModuleCount: Integer;
+  i: Integer;
+  ModuleInfo: IOTAModuleInfo;
+  Files: TStringList;
+begin
+  PageControl1.ActivePage := AureliusTabSheet;
+
+  ModuleServices := (BorlandIDEServices as IOTAModuleServices);
+  Project := GetActiveProject;
+
+  Files := TStringList.Create;
+  try
+
+    Project.GetCompleteFileList(Files);
+
+    for i := 0 to Files.Count - 1 do
+    begin
+      ModuleInfo := Project.GetModule(i);
+      if ModuleInfo.ModuleType = omtUnit then
+      begin
+        ScanFile(ModuleInfo.FileName);
+      end;
+    end;
+  finally
+    Files.Free;
+  end;
+end;
+
+function TfrmDMVCNewUnit.AureliusInstalled: Boolean;
+var
+  Reg: TRegistry;
+begin
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    Result := Reg.KeyExists('Software\tmssoftware\TMS Aurelius');
+  finally
+    Reg.Free;
+  end;
+end;
+
+procedure TfrmDMVCNewUnit.AureliusSelectButtonClick(Sender: TObject);
+begin
+  PageControl1.ActivePage := OptionsTabSheet;
+end;
+
+procedure TfrmDMVCNewUnit.Button1Click(Sender: TObject);
+var
+  DebugString: TStringList;
+  i: Integer;
+  TempItem: TAureliusListItem;
+begin
+  DebugString := TStringList.Create;
+  try
+    for i := 0 to AureliusEntitiesCheckListBox.Items.Count - 1 do
+    begin
+      if not AureliusEntitiesCheckListBox.Checked[i] then Continue;
+      
+      TempItem := TAureliusListItem(AureliusEntitiesCheckListBox.Items.Objects[i]);
+      DebugString.Add(TempItem.FileName + ', ' + TempItem.EntityName + ', ' + TempItem.ClassName + ', ' + TempItem.EnityUnitName)
+    end;
+    ShowMessage(DebugString.Text);
+  finally
+    DebugString.Free;
+  end;
+end;
+
 function TfrmDMVCNewUnit.GetAddAnalyticsMiddleware: boolean;
 begin
   Result := False;
@@ -119,6 +292,20 @@ begin
   begin
     Result := Trim(edtClassName.Text);
   end;
+end;
+
+{ TAureliusListItem }
+
+constructor TAureliusListItem.Create(
+      const FileName: string;
+      const EntityName: string;
+      const ClassName: string;
+      const EntityUnitName: string);
+begin
+  FFileName := FileName;
+  FEntityName := EntityName;
+  FClassName := ClassName;
+  FEntityUnitName := EntityUnitName;
 end;
 
 end.

@@ -48,6 +48,7 @@ uses
   System.SysUtils,
   DMVC.Expert.ProjectWizardEx,
   DMVC.Expert.NewUnitWizardEx,
+  DMVC.Expert.Menus.ProjectManagerMenuIntf,
   Winapi.Windows;
 
 procedure Register;
@@ -55,6 +56,7 @@ begin
   ForceDemandLoadState(dlDisable);
   TDMVCNewProjectWizard.RegisterDMVCProjectWizard(sDelphiPersonality);
   TDMVCNewUnitWizard.RegisterDMVCNewUnitWizard(sDelphiPersonality);
+  TDMVCProjectManagerMenu.RegisterDMVCProjectMenus(sDelphiPersonality);
 end;
 
 // procedure RegisterSplashScreen;

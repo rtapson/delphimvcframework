@@ -146,7 +146,7 @@ end;
 
 function TNewUnit.GetUnnamed: Boolean;
 begin
-  Result := True;
+  Result := FImplFileName = '';
 end;
 
 function TNewUnit.NewFormFile(const FormIdent, AncestorIdent: string): IOTAFile;

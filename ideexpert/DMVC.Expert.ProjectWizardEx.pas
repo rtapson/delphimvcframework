@@ -63,6 +63,7 @@ uses
   DMVC.Expert.CodeGen.NewDMVCProject,
   DMVC.Expert.CodeGen.NewControllerUnit,
   DMVC.Expert.CodeGen.NewWebModuleUnit,
+  DMVC.Expert.Menus.ProjectManagerMenuIntf,
   ExpertsRepository;
 
 resourcestring
@@ -94,7 +95,7 @@ begin
       JSONRPCUnitCreator: IOTACreator;
       WebModuleCreator: IOTAModuleCreator;
       lProjectSourceCreator: IOTACreator;
-    lJSONRPCUnitName: string;
+      lJSONRPCUnitName: string;
     begin
       WizardForm := TfrmDMVCNewProject.Create(Application);
       try
@@ -152,12 +153,12 @@ begin
           WebModuleCreator := TNewWebModuleUnitEx.Create(
             WizardForm.WebModuleClassName,
             WizardForm.ControllerClassName,
-            GetUnitName(ControllerUnit.FileName), 
+            GetUnitName(ControllerUnit.FileName),
             WizardForm.Middlewares,
             WizardForm.JSONRPCClassName,
             lJSONRPCUnitName,
-            APersonality, 
-			WizardForm.chkUseSpring4DContainer.Checked);
+            APersonality,
+			      WizardForm.chkUseSpring4DContainer.Checked);
           WebModuleUnit := ModuleServices.CreateModule(WebModuleCreator);
           if Project <> nil then
           begin
