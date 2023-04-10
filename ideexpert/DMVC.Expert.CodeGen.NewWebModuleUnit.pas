@@ -146,7 +146,14 @@ begin
   end;
 
   if FUseSpring4DContainer then
-    Result := TSourceFile.Create(sSpring4DWebModule, [FUnitIdent, FWebModuleClassName, FControllerUnit, FControllerClassName, FMiddlewares])
+    Result := TSourceFile.Create(sSpring4DWebModule, [
+      FUnitIdent,
+      FWebModuleClassName,
+      FControllerUnit,
+      FControllerClassName,
+      lMiddlewaresCode,
+      lJSONRPCCode,
+      FJSONRPCClassUnit])
   else
     Result := TSourceFile.Create(sWebModuleUnit, [
       FUnitIdent,
@@ -157,7 +164,5 @@ begin
       lJSONRPCCode,
       FJSONRPCClassUnit]);
 end;
-
-
 
 end.
