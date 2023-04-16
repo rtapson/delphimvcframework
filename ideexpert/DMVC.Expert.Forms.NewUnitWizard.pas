@@ -45,7 +45,7 @@ uses
   VCL.Forms,
   VCL.Dialogs,
   VCL.StdCtrls, Vcl.ComCtrls, Vcl.ButtonGroup, System.Actions, Vcl.ActnList,
-  Vcl.CheckLst;
+  Vcl.CheckLst, Vcl.Mask, Vcl.ExtCtrls;
 
 type
   TAureliusListItem = class
@@ -88,12 +88,18 @@ type
     Label2: TLabel;
     Button1: TButton;
     AureliusSelectButton: TButton;
+    FileLocationEdit: TLabeledEdit;
+    ApiPathEdit: TLabeledEdit;
+    ControllerEndpointEdit: TLabeledEdit;
+    ValidationAction: TAction;
     procedure FormCreate(Sender: TObject);
     procedure DMVCActionExecute(Sender: TObject);
     procedure AureliusActionExecute(Sender: TObject);
     procedure Button1Click(Sender: TObject);
     procedure AureliusSelectButtonClick(Sender: TObject);
+    procedure edtClassNameChange(Sender: TObject);
   private
+    FDefaultFileLocation: string;
     function GetCreateIndexMethod: boolean;
     function GetControllerClassName: string;
     function GetCreateActionFiltersMethods: boolean;
@@ -103,14 +109,21 @@ type
     function AureliusInstalled: Boolean;
     procedure ScanFile(const FileName: string);
     function UnitHasAureliusEntities(const FileName: string): Boolean;
+    function GetApiPath: string;
+    function GetControllerEndpoint: string;
+    function GetFileLocation: string;
     { Private declarations }
   public
     { Public declarations }
+    property DefaultFileLocation: string read FDefaultFileLocation write FDefaultFileLocation;
     property ControllerClassName: string read GetControllerClassName;
     property CreateIndexMethod: boolean read GetCreateIndexMethod;
     property CreateCRUDMethods: boolean read GetCreateCRUDMethods;
     property CreateActionFiltersMethods: boolean read GetCreateActionFiltersMethods;
     property AddAnalyticsMiddleware: boolean read GetAddAnalyticsMiddleware;
+    property FileLocation: string read GetFileLocation;
+    property ApiPath: string read GetApiPath;
+    property ControllerEndpoint: string read GetControllerEndpoint;
 
   end;
 
@@ -132,9 +145,21 @@ begin
   PageControl1.ActivePage := OptionsTabSheet;
 end;
 
+procedure TfrmDMVCNewUnit.edtClassNameChange(Sender: TObject);
+var
+  ControllerClassName: string;
+begin
+  ControllerClassName := edtClassName.Text;
+  ControllerEndpointEdit.Text := '/' + ControllerClassName.Substring(1).Replace('Controller', '', [rfIgnoreCase]).ToLower;
+  FileLocationEdit.Text := IncludeTrailingPathDelimiter(DefaultFileLocation) + ControllerClassName.Substring(1) + '.pas';
+
+  btnOK.Enabled := edtClassName.Text <> '';
+end;
+
 procedure TfrmDMVCNewUnit.FormCreate(Sender: TObject);
 begin
   edtClassName.TextHint := sDefaultControllerName;
+  ApiPathEdit.TextHint := sDefaultApiPath;
   if AureliusInstalled then
     PageControl1.ActivePage := StartTabSheet
   else
@@ -154,6 +179,11 @@ end;
 function TfrmDMVCNewUnit.GetCreateIndexMethod: boolean;
 begin
   Result := chkCreateIndexMethod.Checked;
+end;
+
+function TfrmDMVCNewUnit.GetFileLocation: string;
+begin
+  Result := FileLocationEdit.Text;
 end;
 
 procedure TfrmDMVCNewUnit.ScanFile(const FileName: string);
@@ -282,6 +312,18 @@ begin
   Result := False;
 end;
 
+function TfrmDMVCNewUnit.GetApiPath: string;
+begin
+  if Trim(ApiPathEdit.Text) = '' then
+  begin
+    Result := sDefaultApiPath;
+  end
+  else
+  begin
+    Result := Trim(ApiPathEdit.Text);
+  end;
+end;
+
 function TfrmDMVCNewUnit.GetControllerClassName: string;
 begin
   if Trim(edtClassName.Text) = '' then
@@ -292,6 +334,11 @@ begin
   begin
     Result := Trim(edtClassName.Text);
   end;
+end;
+
+function TfrmDMVCNewUnit.GetControllerEndpoint: string;
+begin
+
 end;
 
 { TAureliusListItem }

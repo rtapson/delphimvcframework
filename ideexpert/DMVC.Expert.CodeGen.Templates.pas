@@ -237,6 +237,7 @@ resourcestring
   sDefaultControllerName = 'TMyController';
   sDefaultWebModuleName = 'TMyWebModule';
   sDefaultServerPort = '8080';
+  sDefaultApiPath = '/api';
 
   // 0 = unit name
   // 1 = webmodule classname

@@ -125,6 +125,12 @@ begin
               WizardForm.CreateCRUDMethods,
               WizardForm.CreateActionFiltersMethods,
               WizardForm.ControllerClassName,
+              //WizardForm.FileLocation,
+              //WizardForm.ApiPath,
+              //WizardForm.ControllerEndpoint,
+              '',
+              '',
+              '',
               APersonality);
             ControllerUnit := ModuleServices.CreateModule(ControllerCreator);
             if Project <> nil then

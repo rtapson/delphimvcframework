@@ -46,12 +46,18 @@ type
     FCreateCRUDMethods: Boolean;
     FCreateActionFiltersMethods: Boolean;
     FControllerClassName: string;
+    FFileLocation: string;
+    FApiPath: string;
+    FControllerEndpoint: string;
     function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string)
       : IOTAFile; override;
   public
     constructor Create(
       const aCreateIndexMethod, aCreateCRUDMethods, aCreateActionFiltersMethods: Boolean;
       const AControllerClassName: string;
+      const FileLocation: string;
+      const ApiPath: string;
+      const ControllerEndPoint: string;
       const APersonality: string = '');
   end;
 
@@ -71,13 +77,17 @@ uses
   System.SysUtils,
   VCL.Dialogs,
   DMVC.Expert.CodeGen.Templates,
-  DMVC.Expert.CodeGen.SourceFile;
+  DMVC.Expert.CodeGen.SourceFile,
+  DMVC.Expert.CodeGen.Templates.ControllerUnit,
+  DMVC.Expert.CodeGen.Templates.Intf;
 
 constructor TNewControllerUnitEx.Create(
-  const aCreateIndexMethod, aCreateCRUDMethods,
-  aCreateActionFiltersMethods: Boolean;
-  const AControllerClassName: string;
-  const APersonality: string = '');
+      const aCreateIndexMethod, aCreateCRUDMethods, aCreateActionFiltersMethods: Boolean;
+      const AControllerClassName: string;
+      const FileLocation: string;
+      const ApiPath: string;
+      const ControllerEndPoint: string;
+      const APersonality: string = '');
 begin
   Assert(Length(AControllerClassName) > 0);
   FAncestorName := '';
@@ -89,6 +99,9 @@ begin
   FCreateCRUDMethods := aCreateCRUDMethods;
   FCreateActionFiltersMethods := aCreateActionFiltersMethods;
   Personality := APersonality;
+  FFileLocation := FileLocation;
+  FApiPath := ApiPath;
+  FControllerEndpoint := ControllerEndPoint;
 end;
 
 function TNewControllerUnitEx.NewImplSource(const ModuleIdent, FormIdent,
@@ -97,42 +110,8 @@ var
   lUnitIdent: string;
   lFormName: string;
   lFileName: string;
-  lIndexMethodIntf: string;
-  lIndexMethodImpl: string;
-  lControllerUnit: string;
-  lActionFiltersMethodsIntf: string;
-  lActionFiltersMethodsImpl: string;
-  lCRUDMethodsIntf: string;
-  lCRUDMethodsImpl: string;
+  ControllerUnit: IDMVCCodeTemplate;
 begin
-  lControllerUnit := sControllerUnit;
-  lIndexMethodIntf := sIndexMethodIntf;
-  lIndexMethodImpl := Format(sIndexMethodImpl, [FControllerClassName]);
-  lCRUDMethodsIntf := sCRUDMethodsIntf;
-  lCRUDMethodsImpl := Format(sCRUDMethodsImpl, [FControllerClassName]);
-
-  if not FCreateIndexMethod then
-  begin
-    lIndexMethodIntf := '';
-    lIndexMethodImpl := '';
-  end;
-
-  if not FCreateCRUDMethods then
-  begin
-    lCRUDMethodsIntf := '';
-    lCRUDMethodsImpl := '';
-  end;
-
-  lActionFiltersMethodsIntf := sActionFiltersIntf;
-  lActionFiltersMethodsImpl := Format(sActionFiltersImpl,
-    [FControllerClassName]);
-
-  if not FCreateActionFiltersMethods then
-  begin
-    lActionFiltersMethodsIntf := '';
-    lActionFiltersMethodsImpl := '';
-  end;
-
   if ModuleIdent = '' then
   begin
     // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
@@ -144,8 +123,9 @@ begin
   begin
     lUnitIdent := ModuleIdent;
   end;
-  Result := TSourceFile.Create(sControllerUnit,
-    [lUnitIdent, FControllerClassName, lIndexMethodIntf, lIndexMethodImpl, lActionFiltersMethodsIntf, lActionFiltersMethodsImpl, lCRUDMethodsIntf, lCRUDMethodsImpl]);
+
+  ControllerUnit := TDMVCControllerUnitTemplate.Create(lUnitIdent, FControllerClassName, FApiPath, FControllerEndpoint, FCreateCRUDMethods, FCreateActionFiltersMethods, FCreateIndexMethod);
+  Result := TSourceFile.Create(ControllerUnit.GetSource.Text, []);
 end;
 
 { TNewJSONRPCUnitEx }

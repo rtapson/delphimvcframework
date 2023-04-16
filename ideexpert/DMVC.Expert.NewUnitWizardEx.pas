@@ -85,6 +85,9 @@ begin
               WizardForm.CreateCRUDMethods,
               WizardForm.CreateActionFiltersMethods,
               WizardForm.ControllerClassName,
+              WizardForm.FileLocation,
+              WizardForm.ApiPath,
+              WizardForm.ControllerEndpoint,
               APersonality));
           if Project <> nil then
           begin

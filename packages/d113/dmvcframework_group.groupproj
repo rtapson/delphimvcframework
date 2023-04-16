@@ -15,6 +15,9 @@
         <Projects Include="dmvcframeworkDT.dproj">
             <Dependencies>dmvcframeworkRT.dproj</Dependencies>
         </Projects>
+        <Projects Include="..\..\unittests\IdeExpert\IdeExpertTests.dproj">
+            <Dependencies/>
+        </Projects>
     </ItemGroup>
     <ProjectExtensions>
         <Borland.Personality>Default.Personality.12</Borland.Personality>
@@ -59,14 +62,23 @@
     <Target Name="dmvcframeworkDT:Make" DependsOnTargets="dmvcframeworkRT:Make">
         <MSBuild Projects="dmvcframeworkDT.dproj" Targets="Make"/>
     </Target>
+    <Target Name="IdeExpertTests">
+        <MSBuild Projects="..\..\unittests\IdeExpert\IdeExpertTests.dproj"/>
+    </Target>
+    <Target Name="IdeExpertTests:Clean">
+        <MSBuild Projects="..\..\unittests\IdeExpert\IdeExpertTests.dproj" Targets="Clean"/>
+    </Target>
+    <Target Name="IdeExpertTests:Make">
+        <MSBuild Projects="..\..\unittests\IdeExpert\IdeExpertTests.dproj" Targets="Make"/>
+    </Target>
     <Target Name="Build">
-        <CallTarget Targets="SwagDoc;loggerproRT;dmvcframeworkRT;dmvcframeworkDT"/>
+        <CallTarget Targets="SwagDoc;loggerproRT;dmvcframeworkRT;dmvcframeworkDT;IdeExpertTests"/>
     </Target>
     <Target Name="Clean">
-        <CallTarget Targets="SwagDoc:Clean;loggerproRT:Clean;dmvcframeworkRT:Clean;dmvcframeworkDT:Clean"/>
+        <CallTarget Targets="SwagDoc:Clean;loggerproRT:Clean;dmvcframeworkRT:Clean;dmvcframeworkDT:Clean;IdeExpertTests:Clean"/>
     </Target>
     <Target Name="Make">
-        <CallTarget Targets="SwagDoc:Make;loggerproRT:Make;dmvcframeworkRT:Make;dmvcframeworkDT:Make"/>
+        <CallTarget Targets="SwagDoc:Make;loggerproRT:Make;dmvcframeworkRT:Make;dmvcframeworkDT:Make;IdeExpertTests:Make"/>
     </Target>
     <Import Project="$(BDS)\Bin\CodeGear.Group.Targets" Condition="Exists('$(BDS)\Bin\CodeGear.Group.Targets')"/>
 </Project>

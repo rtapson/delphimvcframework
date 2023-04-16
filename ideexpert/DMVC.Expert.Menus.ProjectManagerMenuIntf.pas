@@ -9,7 +9,7 @@ type
   TDMVCProjectManagerMenu = Class(TNotifierObject, IOTAProjectMenuItemCreatorNotifier)
     //FWizard: TTestingHelperWizard;
     Procedure OptionsClick(Sender: TObject);
-  Public
+  public
     //Constructor Create(Wizard: TTestingHelperWizard);
     Procedure AddMenu(Const Project: IOTAProject; Const IdentList: TStrings;
       Const ProjectManagerMenuList: IInterfaceList; IsMultiSelect: Boolean);
@@ -20,20 +20,17 @@ type
     Procedure Modified;
 
     class procedure RegisterDMVCProjectMenus(const APersonality: string);
-  End;
+  end;
 
-  TDMVCHelperProjectMenu = Class(TNotifierObject, IOTALocalMenu, IOTAProjectManagerMenu)
-    //FWizard  : TTestingHelperWizard;
+  TDMVCProjectMenuCreatorHelper = Class(TNotifierObject, IOTALocalMenu, IOTAProjectManagerMenu)
     FProject : IOTAProject;
     FPosition: Integer;
     FCaption : String;
     FName    : String;
     FVerb    : String;
     FParent  : String;
-
     FFolder: string;
-    //FSetting : TSetting;
-  Public
+  public
     Function GetCaption: String;
     Function GetChecked: Boolean;
     Function GetEnabled: Boolean;
@@ -56,14 +53,11 @@ type
     Function PreExecute(Const MenuContextList: IInterfaceList): Boolean;
     Function PostExecute(Const MenuContextList: IInterfaceList): Boolean;
     Constructor Create(
-      //Wizard: TTestingHelperWizard;
       Project: IOTAProject;
       strCaption, strName, strVerb, strParent: String;
       iPosition: Integer;
-      Folder: string
-      //Setting: TSetting
-      );
-  End;
+      Folder: string);
+  end;
 
 
 implementation
@@ -97,7 +91,7 @@ begin
   if (IdentList.IndexOf(sFileContainer) > -1) and IdentList[1].EndsWith('Controllers', True) then
   begin
     ProjectManagerMenuList.Add(
-      TDMVCHelperProjectMenu.Create(
+      TDMVCProjectMenuCreatorHelper.Create(
         Project,
         strNewControllerCaption,
         strNewControllerName,
@@ -186,7 +180,7 @@ end;
 
 { TITHelperProjectMenu }
 
-Constructor TDMVCHelperProjectMenu.Create(
+Constructor TDMVCProjectMenuCreatorHelper.Create(
       //Wizard: TTestingHelperWizard;
       Project: IOTAProject;
       strCaption, strName, strVerb, strParent: String;
@@ -204,7 +198,7 @@ begin
   FFolder   := Folder;
 end;
 
-procedure TDMVCHelperProjectMenu.Execute(const MenuContextList: IInterfaceList);
+procedure TDMVCProjectMenuCreatorHelper.Execute(const MenuContextList: IInterfaceList);
 var
   ModuleServices: IOTAModuleServices;
   Project: IOTAProject;
@@ -217,6 +211,9 @@ begin
 
   WizardForm := TfrmDMVCNewUnit.Create(nil);
   try
+    WizardForm.DefaultFileLocation := FFolder;
+    WizardForm.FileLocationEdit.Text := FFolder;
+
     if WizardForm.ShowModal = mrOk then
     begin
       ControllerCreator := TNewControllerUnitEx.Create(
@@ -224,9 +221,12 @@ begin
         WizardForm.CreateCRUDMethods,
         WizardForm.CreateActionFiltersMethods,
         WizardForm.ControllerClassName,
+        WizardForm.FileLocation,
+        WizardForm.ApiPath,
+        WizardForm.ControllerEndpoint,
         sDelphiPersonality);
 
-      TNewControllerUnitEx(ControllerCreator).ImplFileName := IncludeTrailingPathDelimiter(FFolder) + 'TestController.pas';
+      TNewControllerUnitEx(ControllerCreator).ImplFileName := WizardForm.FileLocationEdit.Text;
       ControllerUnit := ModuleServices.CreateModule(ControllerCreator);
       if Project <> nil then
       begin
@@ -239,102 +239,102 @@ begin
 
 end;
 
-function TDMVCHelperProjectMenu.GetCaption: String;
+function TDMVCProjectMenuCreatorHelper.GetCaption: String;
 begin
   Result := FCaption;
 end;
 
-function TDMVCHelperProjectMenu.GetChecked: Boolean;
+function TDMVCProjectMenuCreatorHelper.GetChecked: Boolean;
 begin
   Result := False;
 end;
 
-function TDMVCHelperProjectMenu.GetEnabled: Boolean;
+function TDMVCProjectMenuCreatorHelper.GetEnabled: Boolean;
 begin
   Result := True;
 end;
 
-function TDMVCHelperProjectMenu.GetHelpContext: Integer;
+function TDMVCProjectMenuCreatorHelper.GetHelpContext: Integer;
 begin
   Result := 0;
 end;
 
-function TDMVCHelperProjectMenu.GetIsMultiSelectable: Boolean;
+function TDMVCProjectMenuCreatorHelper.GetIsMultiSelectable: Boolean;
 begin
   Result := False;
 end;
 
-function TDMVCHelperProjectMenu.GetName: String;
+function TDMVCProjectMenuCreatorHelper.GetName: String;
 begin
   Result := FName;
 end;
 
-function TDMVCHelperProjectMenu.GetParent: String;
+function TDMVCProjectMenuCreatorHelper.GetParent: String;
 begin
   Result := FParent;
 end;
 
-function TDMVCHelperProjectMenu.GetPosition: Integer;
+function TDMVCProjectMenuCreatorHelper.GetPosition: Integer;
 begin
   Result := FPosition;
 end;
 
-function TDMVCHelperProjectMenu.GetVerb: String;
+function TDMVCProjectMenuCreatorHelper.GetVerb: String;
 begin
   Result := FVerb;
 end;
 
-function TDMVCHelperProjectMenu.PostExecute(const MenuContextList: IInterfaceList): Boolean;
+function TDMVCProjectMenuCreatorHelper.PostExecute(const MenuContextList: IInterfaceList): Boolean;
 begin
   Result := False;
 end;
 
-function TDMVCHelperProjectMenu.PreExecute(const MenuContextList: IInterfaceList): Boolean;
+function TDMVCProjectMenuCreatorHelper.PreExecute(const MenuContextList: IInterfaceList): Boolean;
 begin
   Result := False;
 end;
 
-procedure TDMVCHelperProjectMenu.SetCaption(const Value: String);
+procedure TDMVCProjectMenuCreatorHelper.SetCaption(const Value: String);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetChecked(Value: Boolean);
+procedure TDMVCProjectMenuCreatorHelper.SetChecked(Value: Boolean);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetEnabled(Value: Boolean);
+procedure TDMVCProjectMenuCreatorHelper.SetEnabled(Value: Boolean);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetHelpContext(Value: Integer);
+procedure TDMVCProjectMenuCreatorHelper.SetHelpContext(Value: Integer);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetIsMultiSelectable(Value: Boolean);
+procedure TDMVCProjectMenuCreatorHelper.SetIsMultiSelectable(Value: Boolean);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetName(const Value: String);
+procedure TDMVCProjectMenuCreatorHelper.SetName(const Value: String);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetParent(const Value: String);
+procedure TDMVCProjectMenuCreatorHelper.SetParent(const Value: String);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetPosition(Value: Integer);
+procedure TDMVCProjectMenuCreatorHelper.SetPosition(Value: Integer);
 begin
 
 end;
 
-procedure TDMVCHelperProjectMenu.SetVerb(const Value: String);
+procedure TDMVCProjectMenuCreatorHelper.SetVerb(const Value: String);
 begin
 
 end;
