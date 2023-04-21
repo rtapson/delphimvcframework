@@ -1,7 +1,7 @@
 # DelphiMVCFramework ![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg) ![GitHub All Releases](https://img.shields.io/github/downloads/danieleteti/delphimvcframework/total?label=Downloads)
 
-![](https://img.shields.io/badge/Current%20Version-dmvcframework--3.2.3--radium-blue)
-![](https://img.shields.io/badge/Beta%20Version-dmvcframework--3.3.0--fluorine--beta-red)  
+![](https://img.shields.io/badge/Current%20Version-dmvcframework--3.3.0--fluorine-blue)
+![](https://img.shields.io/badge/Beta%20Version-dmvcframework--3.4.0--neon--beta-red)  
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -16,7 +16,7 @@
     - [How to partecipate to DMVCFramework development and/or tests](#how-to-partecipate-to-dmvcframework-development-andor-tests)
   - [Sponsors](#sponsors)
   - [What users say about DMVCFramework](#what-users-say-about-dmvcframework)
-  - [What's New in dmvcframework-3.3.0-fluorine (currently in beta a.k.a. "repo version")](#whats-new-in-dmvcframework-330-fluorine-currently-in-beta-aka-repo-version)
+  - [What's New in dmvcframework-3.3.0-fluorine](#whats-new-in-dmvcframework-330-fluorine)
   - [What's New in dmvcframework-3.2.3-radium](#whats-new-in-dmvcframework-323-radium)
     - [Bug Fix in 3.2.3-radium](#bug-fix-in-323-radium)
   - [What's new in DelphiMVCFramework-3.2.2-nitrogen](#whats-new-in-delphimvcframework-322-nitrogen)
@@ -214,13 +214,16 @@ Congratulations to Daniele Teti and all the staff for the excellent work!" -- Ma
 > "Thank you for the great framework! We are very happy with this!" -- Andreas
 
 
-## What's New in dmvcframework-3.3.0-fluorine (currently in beta a.k.a. "repo version")
+## What's New in dmvcframework-3.3.0-fluorine
 
 - ⚡ Support for Delphi 11.3 Alexandria
 - ⚡ Ability to use records in swagger param and response attributes [Issue 649](https://github.com/danieleteti/delphimvcframework/issues/649)
 - ⚡ Improved Wizard - now it produces commented code to show how to use `ContextEvents`
 - ⚡ Improved compatibility with Delphi 10.2 Tokyo and older versions (Thanks Mark Lobanov)
+- ⚡ Added sample and middleware for Prometheus (using https://github.com/marcobreveglieri/prometheus-client-delphi)
+- ⚡ Added "Profiler.LogsOnlyIfOverThreshold" which logs only if over the defined threshold
 - 🐞 FIX [Issue 648](https://github.com/danieleteti/delphimvcframework/issues/648) Thanks to [sf-spb](https://github.com/sf-spb)
+- 🐞 FIX [Issue 652](https://github.com/danieleteti/delphimvcframework/issues/652) Thanks to [BssdTS](https://github.com/BssdTS)
 - 🐞 [PR 651](https://github.com/danieleteti/delphimvcframework/pull/651) Thanks to [Francisco Zanini](https://github.com/zaniniflz)
 
 ## What's New in dmvcframework-3.2.3-radium
