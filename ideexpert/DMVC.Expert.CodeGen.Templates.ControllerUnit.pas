@@ -35,8 +35,6 @@ type
       const IncludeActionFilters: Boolean = False;
       const IncludeSampleMethods: Boolean = False);
     destructor Destroy; override;
-
-//    property ControllerClassName: string read FControllerClassName;
   end;
 
 implementation

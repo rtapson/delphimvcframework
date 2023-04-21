@@ -150,6 +150,16 @@
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.ProjectWizardEx.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.Registration.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Splash.Registration.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.Forms.GenerateAureliusControllers.pas">
+            <Form>Form1</Form>
+        </DCCReference>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.Menus.ProjectManagerMenuIntf.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.Intf.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.ActionFilter.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.BaseUnit.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.ControllerUnit.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.EmptyUnit.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.NewEmptyUnit.pas"/>
         <RcItem Include="..\..\ideexpert\DMVC.Expert.NewProject.ico">
             <ResourceType>ICON</ResourceType>
             <ResourceId>DMVCNewProjectIcon</ResourceId>

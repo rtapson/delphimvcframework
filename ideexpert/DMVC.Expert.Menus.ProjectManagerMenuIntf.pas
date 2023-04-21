@@ -30,7 +30,7 @@ type
     FVerb    : String;
     FParent  : String;
     FFolder: string;
-  public
+
     Function GetCaption: String;
     Function GetChecked: Boolean;
     Function GetEnabled: Boolean;
@@ -49,10 +49,14 @@ type
     Procedure SetVerb(Const Value: String);
     Function GetIsMultiSelectable: Boolean;
     Procedure SetIsMultiSelectable(Value: Boolean);
-    Procedure Execute(Const MenuContextList: IInterfaceList); Overload;
-    Function PreExecute(Const MenuContextList: IInterfaceList): Boolean;
-    Function PostExecute(Const MenuContextList: IInterfaceList): Boolean;
-    Constructor Create(
+
+    procedure NewController;
+    procedure NewUnit;
+  public
+    procedure Execute(Const MenuContextList: IInterfaceList);
+    function PreExecute(Const MenuContextList: IInterfaceList): Boolean;
+    function PostExecute(Const MenuContextList: IInterfaceList): Boolean;
+    constructor Create(
       Project: IOTAProject;
       strCaption, strName, strVerb, strParent: String;
       iPosition: Integer;
@@ -60,17 +64,28 @@ type
   end;
 
 
+
+
 implementation
 
 uses
+  Vcl.Dialogs,
   SysUtils,
   Vcl.Controls,
   DMVC.Expert.CodeGen.NewControllerUnit,
-  DMVC.Expert.Forms.NewUnitWizard;
+  DMVC.Expert.Forms.NewUnitWizard,
+//  DMVC.Expert.CodeGen.Templates.EmptyUnit,
+  DMVC.Expert.CodeGen.NewEmptyUnit;
 
 resourcestring
-  strNewControllerCaption = 'New Controller';
+  strSepCaption = '-';
+  strSepName = 'dmvcSeperation';
+  strAddNewCaption = 'Add Ne&w';
+  strAddNewName = 'dmvcAddNewMenu';
+  strNewControllerCaption = '&Controller';
   strNewControllerName = 'dmvcNewControllerMenu';
+  strNewUnitCaption = '&Unit';
+  strNewUnitName = 'dmvcNewUnitMenu';
 
 var
   iPrjMgrMenu: Integer;
@@ -83,10 +98,59 @@ procedure TDMVCProjectManagerMenu.AddMenu(
   const ProjectManagerMenuList: IInterfaceList;
   IsMultiSelect: Boolean);
 var
-  i, j     : Integer;
+  j: Integer;
   iPosition: Integer;
-  M        : IOTAProjectManagerMenu;
+  M: IOTAProjectManagerMenu;
 begin
+  iPosition := 0;
+  for j := 0 To ProjectManagerMenuList.Count - 1 Do
+  begin
+    M := ProjectManagerMenuList.Items[j] As IOTAProjectManagerMenu;
+    if CompareText(M.Caption, 'Compare') = 0 Then
+      begin
+        iPosition := M.Position + 1;
+        Break;
+      end;
+  end;
+
+  if (IdentList.IndexOf(sFileContainer) > -1) and (IdentList.IndexOf(sProjectContainer) < 0) then
+  begin
+    ProjectManagerMenuList.Add(
+      TDMVCProjectMenuCreatorHelper.Create(
+        Project,
+        strSepCaption,
+        strSepName,
+        strSepName,
+        '',
+        iPosition,
+        IdentList[1]));
+
+    ProjectManagerMenuList.Add(
+      TDMVCProjectMenuCreatorHelper.Create(
+        Project,
+        strAddNewCaption,
+        strAddNewName,
+        strAddNewName,
+        '',
+        iPosition + 1,
+        IdentList[1]));
+  end;
+
+
+
+  if (IdentList.IndexOf(sFileContainer) > -1) and (IdentList.IndexOf(sProjectContainer) < 0) then
+  begin
+    ProjectManagerMenuList.Add(
+      TDMVCProjectMenuCreatorHelper.Create(
+        Project,
+        strNewUnitCaption,
+        strNewUnitName,
+        strNewUnitName,
+        strAddNewName,
+        iPosition + 2,
+        IdentList[1]));
+  end;
+
 
   if (IdentList.IndexOf(sFileContainer) > -1) and IdentList[1].EndsWith('Controllers', True) then
   begin
@@ -96,47 +160,10 @@ begin
         strNewControllerCaption,
         strNewControllerName,
         strNewControllerName,
-        '',
-        iPosition,
+        strAddNewName,
+        iPosition + 3,
         IdentList[1]));
   end;
-
-
-//  for i := 0 To IdentList.Count - 1 do
-//    if sProjectContainer = IdentList[i] then
-//      begin
-//        iPosition := 0;
-//        For j     := 0 To ProjectManagerMenuList.Count - 1 Do
-//          Begin
-//            M := ProjectManagerMenuList.Items[j] As IOTAProjectManagerMenu;
-//            If CompareText(M.Verb, 'Options') = 0 Then
-//              Begin
-//                iPosition := M.Position + 1;
-//                Break;
-//              End;
-//          End;
-//          ProjectManagerMenuList.Add(
-//            TDMVCHelperProjectMenu.Create(
-//              Project,
-//              strNewControllerCaption,
-//              strNewControllerName,
-//              strNewControllerName,
-//              '',
-//              iPosition));
-////        ProjectManagerMenuList.Add(TITHelperProjectMenu.Create(FWizard, Project,
-////          strMainCaption, strMainName, strMainName, '', iPosition, seProject));
-////        ProjectManagerMenuList.Add(TITHelperProjectMenu.Create(FWizard, Project,
-////          strProjectCaption, strProjectName, strProjectName, strMainName, iPosition + 1,
-////          seProject));
-////        ProjectManagerMenuList.Add(TITHelperProjectMenu.Create(FWizard, Project,
-////          strBeforeCaption, strBeforeName, strBeforeName, strMainName, iPosition + 2,
-////          seBefore));
-////        ProjectManagerMenuList.Add(TITHelperProjectMenu.Create(FWizard, Project,
-////          strAfterCaption, strAfterName, strAfterName, strMainName, iPosition + 3,
-////          seAfter));
-////        ProjectManagerMenuList.Add(TITHelperProjectMenu.Create(FWizard, Project,
-////          strZIPCaption, strZIPName, strZIPName, strMainName, iPosition + 4, seZIP));
-//      End;
 end;
 
 procedure TDMVCProjectManagerMenu.AfterSave;
@@ -174,8 +201,8 @@ var
   MenuNotifier: TDMVCProjectManagerMenu;
 begin
   MenuNotifier := TDMVCProjectManagerMenu.Create();
-  var iPrjMgrMenu := (BorlandIDEServices As IOTAProjectManager).AddMenuItemCreatorNotifier(
-    MenuNotifier);
+  iPrjMgrMenu := (BorlandIDEServices As IOTAProjectManager)
+    .AddMenuItemCreatorNotifier(MenuNotifier);
 end;
 
 { TITHelperProjectMenu }
@@ -199,43 +226,10 @@ begin
 end;
 
 procedure TDMVCProjectMenuCreatorHelper.Execute(const MenuContextList: IInterfaceList);
-var
-  ModuleServices: IOTAModuleServices;
-  Project: IOTAProject;
-  ControllerCreator: IOTACreator;
-  ControllerUnit: IOTAModule;
-  WizardForm: TfrmDMVCNewUnit;
 begin
-  ModuleServices := (BorlandIDEServices as IOTAModuleServices);
-  Project := GetActiveProject;
+  if FName = strNewControllerName then NewController;
+  if FName = strNewUnitName then NewUnit;
 
-  WizardForm := TfrmDMVCNewUnit.Create(nil);
-  try
-    WizardForm.DefaultFileLocation := FFolder;
-    WizardForm.FileLocationEdit.Text := FFolder;
-
-    if WizardForm.ShowModal = mrOk then
-    begin
-      ControllerCreator := TNewControllerUnitEx.Create(
-        WizardForm.CreateIndexMethod,
-        WizardForm.CreateCRUDMethods,
-        WizardForm.CreateActionFiltersMethods,
-        WizardForm.ControllerClassName,
-        WizardForm.FileLocation,
-        WizardForm.ApiPath,
-        WizardForm.ControllerEndpoint,
-        sDelphiPersonality);
-
-      TNewControllerUnitEx(ControllerCreator).ImplFileName := WizardForm.FileLocationEdit.Text;
-      ControllerUnit := ModuleServices.CreateModule(ControllerCreator);
-      if Project <> nil then
-      begin
-        Project.AddFile(ControllerUnit.FileName, True);
-      end;
-    end;
-  finally
-    WizardForm.Free;
-    end;
 
 end;
 
@@ -282,6 +276,85 @@ end;
 function TDMVCProjectMenuCreatorHelper.GetVerb: String;
 begin
   Result := FVerb;
+end;
+
+procedure TDMVCProjectMenuCreatorHelper.NewController;
+var
+  ModuleServices: IOTAModuleServices;
+  Project: IOTAProject;
+  ControllerCreator: IOTACreator;
+  ControllerUnit: IOTAModule;
+  WizardForm: TfrmDMVCNewUnit;
+begin
+  ModuleServices := (BorlandIDEServices as IOTAModuleServices);
+  Project := GetActiveProject;
+
+  WizardForm := TfrmDMVCNewUnit.Create(nil);
+  try
+    WizardForm.DefaultFileLocation := FFolder;
+    WizardForm.FileLocationEdit.Text := FFolder;
+
+    if WizardForm.ShowModal = mrOk then
+    begin
+      ControllerCreator := TNewControllerUnitEx.Create(
+        WizardForm.CreateIndexMethod,
+        WizardForm.CreateCRUDMethods,
+        WizardForm.CreateActionFiltersMethods,
+        WizardForm.ControllerClassName,
+        WizardForm.FileLocation,
+        WizardForm.ApiPath,
+        WizardForm.ControllerEndpoint,
+        sDelphiPersonality);
+
+      TNewControllerUnitEx(ControllerCreator).ImplFileName := WizardForm.FileLocationEdit.Text;
+      ControllerUnit := ModuleServices.CreateModule(ControllerCreator);
+      if Project <> nil then
+      begin
+        Project.AddFile(ControllerUnit.FileName, True);
+      end;
+    end;
+  finally
+    WizardForm.Free;
+    end;
+end;
+
+procedure TDMVCProjectMenuCreatorHelper.NewUnit;
+var
+  ModuleServices: IOTAModuleServices;
+  Project: IOTAProject;
+  UnitCreator: IOTACreator;
+  NewUnit: IOTAModule;
+
+  lUnitIdent: string;
+  lFormName: string;
+  lFileName: string;
+
+begin
+  ModuleServices := (BorlandIDEServices as IOTAModuleServices);
+  Project := GetActiveProject;
+
+//  if ModuleIdent = '' then
+//  begin
+    // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
+    // So using method mentioned by Marco Cantu.
+    (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('',
+      lUnitIdent, lFormName, lFileName);
+//  end
+//  else
+//  begin
+//    lUnitIdent := ModuleIdent;
+//  end;
+
+  UnitCreator := TNewUnitEx.Create(lUnitIdent, sDelphiPersonality);
+
+  TNewUnitEx(UnitCreator).ImplFileName := IncludeTrailingPathDelimiter(FFolder) + lUnitIdent + '.pas';
+
+  NewUnit := ModuleServices.CreateModule(UnitCreator);
+  if Project <> nil then
+  begin
+    Project.AddFile(NewUnit.FileName, True);
+  end;
+
 end;
 
 function TDMVCProjectMenuCreatorHelper.PostExecute(const MenuContextList: IInterfaceList): Boolean;
@@ -331,7 +404,7 @@ end;
 
 procedure TDMVCProjectMenuCreatorHelper.SetPosition(Value: Integer);
 begin
-
+  FPosition := Value;
 end;
 
 procedure TDMVCProjectMenuCreatorHelper.SetVerb(const Value: String);
