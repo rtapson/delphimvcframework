@@ -333,17 +333,10 @@ begin
   ModuleServices := (BorlandIDEServices as IOTAModuleServices);
   Project := GetActiveProject;
 
-//  if ModuleIdent = '' then
-//  begin
-    // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
-    // So using method mentioned by Marco Cantu.
-    (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('',
-      lUnitIdent, lFormName, lFileName);
-//  end
-//  else
-//  begin
-//    lUnitIdent := ModuleIdent;
-//  end;
+  // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
+  // So using method mentioned by Marco Cantu.
+  (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('',
+    lUnitIdent, lFormName, lFileName);
 
   UnitCreator := TNewUnitEx.Create(lUnitIdent, sDelphiPersonality);
 
@@ -354,7 +347,6 @@ begin
   begin
     Project.AddFile(NewUnit.FileName, True);
   end;
-
 end;
 
 function TDMVCProjectMenuCreatorHelper.PostExecute(const MenuContextList: IInterfaceList): Boolean;

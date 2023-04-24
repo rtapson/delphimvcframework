@@ -52,17 +52,17 @@ type
   private
     FFileName: string;
     FEntityName: string;
-    FClassName: string;
+    FEntityClassName: string;
     FEntityUnitName: string;
   public
     constructor Create(
       const FileName: string;
       const EntityName: string;
-      const ClassName: string;
+      const EntityClassName: string;
       const EntityUnitName: string);
     property FileName: string read FFileName;
     property EntityName: string read FEntityName;
-    property ClassName: string read FClassName;
+    property EntityClassName: string read FEntityClassName;
     property EnityUnitName: string read FEntityUnitName;
   end;
 
@@ -192,23 +192,24 @@ var
   SourceLine: string;
   EntityFound: Boolean;
   EntityName: string;
-  ClassName: string;
+  EntityClassName: string;
   EntityUnitName: string;
 begin
   FileContents := TStringList.Create;
   try
     FileContents.LoadFromFile(FileName);
+    EntityFound := False;
     for SourceLine in FileContents do
     begin
       if not EntityFound then EntityFound := SourceLine.Contains('[Entity]');
 
       if SourceLine.Contains('[Table(') then
       begin
-        EntityName := SourceLine.Remove(SourceLine.IndexOf(')') - 1).Remove(1, SourceLine.IndexOf('(') + 1).TrimEnd(['s']).TrimLeft;
+        EntityName := SourceLine.Remove(SourceLine.IndexOf(')') - 1).Remove(1, SourceLine.IndexOf('(') + 1).TrimRight(['s']).TrimLeft;
       end;
       if SourceLine.Contains('class(') then
       begin
-        ClassName := SourceLine.SubString(1, SourceLine.IndexOf('=') - 2).TrimLeft;
+        EntityClassName := SourceLine.SubString(1, SourceLine.IndexOf('=') - 2).TrimLeft;
 
         EntityUnitName := TPath.GetFileNameWithoutExtension(FileName);
 
@@ -217,10 +218,10 @@ begin
         if EntityFound then
           AureliusEntitiesCheckListBox.Items.AddObject(
             EntityName,
-            TAureliusListItem.Create(FileName, EntityName, ClassName, EntityUnitName));
+            TAureliusListItem.Create(FileName, EntityName, EntityClassName, EntityUnitName));
 
 //        if EntityFound then
-//          BuildController(ControllerFolder, TemplateFolder, EntityName, ClassName, EntityUnitName);
+//          BuildController(ControllerFolder, TemplateFolder, EntityName, EntityClassName, EntityUnitName);
 
         EntityFound := False;
       end;
@@ -233,14 +234,13 @@ end;
 
 function TfrmDMVCNewUnit.UnitHasAureliusEntities(const FileName: string): Boolean;
 begin
-
+  Result := False;
 end;
 
 procedure TfrmDMVCNewUnit.AureliusActionExecute(Sender: TObject);
 var
   ModuleServices: IOTAModuleServices;
   Project: IOTAProject;
-//  ModuleCount: Integer;
   i: Integer;
   ModuleInfo: IOTAModuleInfo;
   Files: TStringList;
@@ -299,7 +299,7 @@ begin
       if not AureliusEntitiesCheckListBox.Checked[i] then Continue;
       
       TempItem := TAureliusListItem(AureliusEntitiesCheckListBox.Items.Objects[i]);
-      DebugString.Add(TempItem.FileName + ', ' + TempItem.EntityName + ', ' + TempItem.ClassName + ', ' + TempItem.EnityUnitName)
+      DebugString.Add(TempItem.FileName + ', ' + TempItem.EntityName + ', ' + TempItem.EntityClassName + ', ' + TempItem.EnityUnitName)
     end;
     ShowMessage(DebugString.Text);
   finally
@@ -346,12 +346,12 @@ end;
 constructor TAureliusListItem.Create(
       const FileName: string;
       const EntityName: string;
-      const ClassName: string;
+      const EntityClassName: string;
       const EntityUnitName: string);
 begin
   FFileName := FileName;
   FEntityName := EntityName;
-  FClassName := ClassName;
+  FEntityClassName := EntityClassName;
   FEntityUnitName := EntityUnitName;
 end;
 

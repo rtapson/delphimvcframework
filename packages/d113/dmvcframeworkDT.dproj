@@ -155,7 +155,6 @@
         </DCCReference>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.Menus.ProjectManagerMenuIntf.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.Intf.pas"/>
-        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.ActionFilter.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.BaseUnit.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.ControllerUnit.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.EmptyUnit.pas"/>
