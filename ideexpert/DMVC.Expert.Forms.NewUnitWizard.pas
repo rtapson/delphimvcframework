@@ -76,11 +76,8 @@ type
     chkCreateActionFiltersMethods: TCheckBox;
     chkCreateCRUDMethods: TCheckBox;
     PageControl1: TPageControl;
-    StartTabSheet: TTabSheet;
     AureliusTabSheet: TTabSheet;
     OptionsTabSheet: TTabSheet;
-    ButtonGroup1: TButtonGroup;
-    Label1: TLabel;
     ActionList: TActionList;
     DMVCAction: TAction;
     AureliusAction: TAction;
@@ -92,12 +89,20 @@ type
     ApiPathEdit: TLabeledEdit;
     ControllerEndpointEdit: TLabeledEdit;
     ValidationAction: TAction;
+    chkUseAurelius: TCheckBox;
+    CommandPanel: TPanel;
+    btnBack: TButton;
+    BackAction: TAction;
+    NextOkAction: TAction;
+    Panel1: TPanel;
     procedure FormCreate(Sender: TObject);
     procedure DMVCActionExecute(Sender: TObject);
     procedure AureliusActionExecute(Sender: TObject);
     procedure Button1Click(Sender: TObject);
-    procedure AureliusSelectButtonClick(Sender: TObject);
     procedure edtClassNameChange(Sender: TObject);
+    procedure BackActionExecute(Sender: TObject);
+    procedure NextOkActionExecute(Sender: TObject);
+    procedure ActionListUpdate(Action: TBasicAction; var Handled: Boolean);
   private
     FDefaultFileLocation: string;
     function GetCreateIndexMethod: boolean;
@@ -150,7 +155,8 @@ var
   ControllerClassName: string;
 begin
   ControllerClassName := edtClassName.Text;
-  ControllerEndpointEdit.Text := '/' + ControllerClassName.Substring(1).Replace('Controller', '', [rfIgnoreCase]).ToLower;
+  if ControllerClassName.StartsWith('T') then
+    ControllerEndpointEdit.Text := '/' + ControllerClassName.Substring(1).Replace('Controller', '', [rfIgnoreCase]).ToLower;
   FileLocationEdit.Text := IncludeTrailingPathDelimiter(DefaultFileLocation) + ControllerClassName.Substring(1) + '.pas';
 
   btnOK.Enabled := edtClassName.Text <> '';
@@ -160,10 +166,7 @@ procedure TfrmDMVCNewUnit.FormCreate(Sender: TObject);
 begin
   edtClassName.TextHint := sDefaultControllerName;
   ApiPathEdit.TextHint := sDefaultApiPath;
-  if AureliusInstalled then
-    PageControl1.ActivePage := StartTabSheet
-  else
-    PageControl1.ActivePage := OptionsTabSheet;
+  PageControl1.ActivePage := OptionsTabSheet;
 end;
 
 function TfrmDMVCNewUnit.GetCreateActionFiltersMethods: boolean;
@@ -184,6 +187,14 @@ end;
 function TfrmDMVCNewUnit.GetFileLocation: string;
 begin
   Result := FileLocationEdit.Text;
+end;
+
+procedure TfrmDMVCNewUnit.NextOkActionExecute(Sender: TObject);
+begin
+  if chkUseAurelius.Checked then
+  begin
+    PageControl1.ActivePage := AureliusTabSheet;
+  end;
 end;
 
 procedure TfrmDMVCNewUnit.ScanFile(const FileName: string);
@@ -237,6 +248,38 @@ begin
   Result := False;
 end;
 
+procedure TfrmDMVCNewUnit.ActionListUpdate(Action: TBasicAction;
+  var Handled: Boolean);
+begin
+  if chkUseAurelius.Checked then
+  begin
+    btnOK.ModalResult := mrNone;
+    if PageControl1.ActivePage = AureliusTabSheet then
+    begin
+      NextOkAction.OnExecute := AureliusActionExecute;
+      NextOkAction.Enabled := AureliusEntitiesCheckListBox.SelCount > 0;
+      NextOkAction.Caption := 'OK';
+    end
+    else
+    begin
+      NextOkAction.OnExecute := NextOkActionExecute;
+      NextOkAction.Caption := 'Next';
+      NextOkAction.Enabled := True;
+    end;
+  end
+  else
+  begin
+    btnOK.ModalResult := mrOk;
+    NextOkAction.Enabled := True;
+    NextOkAction.Caption := 'OK';
+    NextOkAction.OnExecute := DMVCActionExecute;
+  end;
+
+  BackAction.Enabled := PageControl1.ActivePage = AureliusTabSheet;
+  BackAction.Visible := chkUseAurelius.Checked;
+  Handled := True;
+end;
+
 procedure TfrmDMVCNewUnit.AureliusActionExecute(Sender: TObject);
 var
   ModuleServices: IOTAModuleServices;
@@ -281,9 +324,9 @@ begin
   end;
 end;
 
-procedure TfrmDMVCNewUnit.AureliusSelectButtonClick(Sender: TObject);
+procedure TfrmDMVCNewUnit.BackActionExecute(Sender: TObject);
 begin
-  PageControl1.ActivePage := OptionsTabSheet;
+  PageControl1.ActivePageIndex := PageControl1.ActivePageIndex - 1;
 end;
 
 procedure TfrmDMVCNewUnit.Button1Click(Sender: TObject);

@@ -7,10 +7,11 @@ uses
 
 type
   TDMVCProjectManagerMenu = Class(TNotifierObject, IOTAProjectMenuItemCreatorNotifier)
-    //FWizard: TTestingHelperWizard;
+  private
     Procedure OptionsClick(Sender: TObject);
+
+    function AureliusInstalled: Boolean;
   public
-    //Constructor Create(Wizard: TTestingHelperWizard);
     Procedure AddMenu(Const Project: IOTAProject; Const IdentList: TStrings;
       Const ProjectManagerMenuList: IInterfaceList; IsMultiSelect: Boolean);
     Function CanHandle(Const Ident: String): Boolean;
@@ -72,6 +73,8 @@ uses
   Vcl.Dialogs,
   SysUtils,
   Vcl.Controls,
+  Win.Registry,
+  Winapi.Windows,
   DMVC.Expert.CodeGen.NewControllerUnit,
   DMVC.Expert.Forms.NewUnitWizard,
 //  DMVC.Expert.CodeGen.Templates.EmptyUnit,
@@ -86,6 +89,8 @@ resourcestring
   strNewControllerName = 'dmvcNewControllerMenu';
   strNewUnitCaption = '&Unit';
   strNewUnitName = 'dmvcNewUnitMenu';
+  strNewAureliusControllerCaption = 'Aurelius Controller';
+  strNewAureliuscontrollerName = 'dmvcNewAureliusController';
 
 var
   iPrjMgrMenu: Integer;
@@ -101,16 +106,16 @@ var
   j: Integer;
   iPosition: Integer;
   M: IOTAProjectManagerMenu;
+  debugstring: string;
 begin
   iPosition := 0;
   for j := 0 To ProjectManagerMenuList.Count - 1 Do
   begin
     M := ProjectManagerMenuList.Items[j] As IOTAProjectManagerMenu;
-    if CompareText(M.Caption, 'Compare') = 0 Then
-      begin
-        iPosition := M.Position + 1;
-        Break;
-      end;
+    if not Assigned(M) then Exit;
+
+    if M.Parent = '' then
+      iPosition := M.Position + 1;
   end;
 
   if (IdentList.IndexOf(sFileContainer) > -1) and (IdentList.IndexOf(sProjectContainer) < 0) then
@@ -136,8 +141,6 @@ begin
         IdentList[1]));
   end;
 
-
-
   if (IdentList.IndexOf(sFileContainer) > -1) and (IdentList.IndexOf(sProjectContainer) < 0) then
   begin
     ProjectManagerMenuList.Add(
@@ -149,26 +152,52 @@ begin
         strAddNewName,
         iPosition + 2,
         IdentList[1]));
-  end;
 
+    if ((IdentList[2] = sDirectoryContainer) and (IdentList[1].EndsWith('Controllers', True)))
+      or ((IdentList[2] = sFileContainer) and (IdentList[1].EndsWith('Controllers', True)))
+      or ((IdentList[2] = sFileContainer) and (ExcludeTrailingPathDelimiter(ExtractFilePath(IdentList[1])).EndsWith('Controllers')))
+    then
+    begin
+      ProjectManagerMenuList.Add(
+        TDMVCProjectMenuCreatorHelper.Create(
+          Project,
+          strNewControllerCaption,
+          strNewControllerName,
+          strNewControllerName,
+          strAddNewName,
+          iPosition + 3,
+          IdentList[1]));
 
-  if (IdentList.IndexOf(sFileContainer) > -1) and IdentList[1].EndsWith('Controllers', True) then
-  begin
-    ProjectManagerMenuList.Add(
-      TDMVCProjectMenuCreatorHelper.Create(
-        Project,
-        strNewControllerCaption,
-        strNewControllerName,
-        strNewControllerName,
-        strAddNewName,
-        iPosition + 3,
-        IdentList[1]));
+      if AureliusInstalled then
+        ProjectManagerMenuList.Add(
+          TDMVCProjectMenuCreatorHelper.Create(
+            Project,
+            strNewAureliusControllerCaption,
+            strNewAureliusControllerName,
+            strNewAureliusControllerName,
+            strAddNewName,
+            iPosition + 4,
+            IdentList[1]));
+    end;
   end;
 end;
 
 procedure TDMVCProjectManagerMenu.AfterSave;
 begin
 
+end;
+
+function TDMVCProjectManagerMenu.AureliusInstalled: Boolean;
+var
+  Reg: TRegistry;
+begin
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    Result := Reg.KeyExists('Software\tmssoftware\TMS Aurelius');
+  finally
+    Reg.Free;
+  end;
 end;
 
 procedure TDMVCProjectManagerMenu.BeforeSave;
