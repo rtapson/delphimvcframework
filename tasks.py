@@ -79,7 +79,6 @@ def build_delphi_project(
         + project_filename
         + '"'
     )
-    print("\n" + "".join(cmdline))
     r = ctx.run(cmdline, hide=True, warn=True)
     if r.failed:
         print(r.stdout)
@@ -124,8 +123,7 @@ def copy_sources():
 
     # copying tools
     print("Copying tools...")
-    copytree("tools\\entitygenerator", g_output_folder + "\\tools\\entitygenerator")
-    # copytree('tools\\rql2sql', g_output_folder + "\\tools\\rql2sql")
+    copytree("tools\\entitygenerator", g_output_folder + "\\tools\\entitygenerator")    
 
     # copying ideexperts
     print("Copying DMVCFramework IDEExpert...")
@@ -149,7 +147,7 @@ def copy_sources():
         "dmvcframeworkDT.dpk",
     ]
 
-    folders = ["d100", "d101", "d102", "d103", "d104","d110","d111","d112","d113"]
+    folders = ["d100", "d101", "d102", "d103", "d104","d110","d113"]
 
     for folder in folders:
         print(f"Copying DMVCFramework Delphi {folder} packages...")
@@ -326,10 +324,13 @@ def tests32(ctx, delphi_version=DEFAULT_DELPHI_VERSION):
 
     print("\nExecuting tests...")
     subprocess.Popen([r"unittests\general\TestServer\bin\TestServer.exe"], shell=True)
-    r = subprocess.run([r"unittests\general\Several\bin32\DMVCFrameworkTests.exe"])
-    if r.returncode != 0:
-        return Exit("Compilation failed: \n" + str(r.stdout))
-    subprocess.run(["taskkill", "/f", "/im", "TestServer.exe"])
+    r = None
+    try:
+        r = subprocess.run([r"unittests\general\Several\bin32\DMVCFrameworkTests.exe"])
+        if r.returncode != 0:
+            return Exit("Cannot run unit test client: \n" + str(r.stdout))
+    finally:
+        subprocess.run(["taskkill", "/f", "/im", "TestServer.exe"])
     if r.returncode > 0:
         print(r)
         print("Unit Tests Failed")
@@ -358,10 +359,13 @@ def tests64(ctx, delphi_version=DEFAULT_DELPHI_VERSION):
 
     print("\nExecuting tests...")
     subprocess.Popen([r"unittests\general\TestServer\bin\TestServer.exe"], shell=True)
-    r = subprocess.run([r"unittests\general\Several\bin64\DMVCFrameworkTests.exe"])
-    if r.returncode != 0:
-        return Exit("Compilation failed: \n" + str(r.stdout))
-    subprocess.run(["taskkill", "/f", "/im", "TestServer.exe"])
+    r = None
+    try:
+        r = subprocess.run([r"unittests\general\Several\bin64\DMVCFrameworkTests.exe"])
+        if r.returncode != 0:
+            return Exit("Cannot run unit test client: \n" + str(r.stdout))
+    finally:
+        subprocess.run(["taskkill", "/f", "/im", "TestServer.exe"])
     if r.returncode > 0:
         print(r)
         print("Unit Tests Failed")

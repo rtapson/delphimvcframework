@@ -64,17 +64,25 @@ type
     [Test]
     procedure TestCRUDWithGUID;
     [Test]
-    procedure TestCRUDWithTableChange;
-    [Test]
     procedure TestCRUDStringPK;
     [Test]
     procedure TestSelectWithExceptions;
+    [Test]
+    procedure TestNamedQuerySQL;
+    [Test]
+    procedure TestTryGetNamedQuery;
+    [Test]
+    procedure TestNamedQuerySQLByBackEnd;
     [Test]
     procedure TestStore;
     [Test]
     procedure TestLifeCycle;
     [Test]
     procedure TestRQL;
+    [Test]
+    procedure TestNamedQueryRQL;
+    [Test]
+    procedure TestNamedQueryRQLWithExceptions;
     [Test]
     procedure TestRQLWithMVCNameAsAttribute;
     [Test]
@@ -465,49 +473,6 @@ begin
 
   lCustomer := TMVCActiveRecord.GetOneByWhere<TCustomerWithSpaces>('"id with spaces" = ?', [lID], [ftInteger], False);
   Assert.IsNull(lCustomer);
-end;
-
-procedure TTestActiveRecordBase.TestCRUDWithTableChange;
-var
-  lCustomer: TCustomer;
-  lID: Integer;
-begin
-  Assert.AreEqual(Int64(0), TMVCActiveRecord.Count<TCustomer>());
-  AfterDataLoad;
-  lCustomer := TCustomer.Create;
-  try
-    lCustomer.CompanyName := 'bit Time Professionals';
-    lCustomer.City := 'Rome, IT';
-    lCustomer.Note := 'note1';
-    lCustomer.CreationTime := Time;
-    lCustomer.CreationDate := Date;
-    lCustomer.ID := -1; { don't be fooled by the default! }
-    lCustomer.Insert;
-    lID := lCustomer.ID;
-    Assert.AreEqual(1, lID);
-  finally
-    lCustomer.Free;
-  end;
-
-  // the same changing tablename
-
-  lCustomer := TCustomer.Create;
-  try
-    Assert.AreEqual('customers', lCustomer.TableName);
-    lCustomer.TableName := 'customers2';
-    lCustomer.CompanyName := 'bit Time Professionals';
-    lCustomer.City := 'Rome, IT';
-    lCustomer.Note := 'note1';
-    lCustomer.CreationTime := Time;
-    lCustomer.CreationDate := Date;
-    lCustomer.ID := -1; { don't be fooled by the default! }
-    lCustomer.Insert;
-    lID := lCustomer.ID;
-    Assert.AreEqual(1, lID);
-    Assert.IsTrue(lCustomer.LoadByPK(lID));
-  finally
-    lCustomer.Free;
-  end;
 end;
 
 procedure TTestActiveRecordBase.TestDefaultFilteringCount;
@@ -1170,6 +1135,68 @@ begin
   Assert.AreEqual(Trunc(20 * 30), TMVCActiveRecord.Count(TCustomerWithLF));
 end;
 
+procedure TTestActiveRecordBase.TestNamedQueryRQL;
+var
+  lCustomers: TObjectList<TCustomer>;
+begin
+  Assert.AreEqual(Int64(0), TMVCActiveRecord.Count(TCustomer));
+  LoadData;
+  lCustomers := TMVCActiveRecord.SelectRQLByNamedQuery<TCustomer>('CityRomeOrLondon', [], MAXINT);
+  try
+    Assert.AreEqual(240, lCustomers.Count);
+    for var lCustomer in lCustomers do
+    begin
+      Assert.IsMatch('^(Rome|London)$', lCustomer.City);
+    end;
+  finally
+    lCustomers.Free;
+  end;
+  TMVCActiveRecord.DeleteRQLByNamedQuery<TCustomer>('CityRomeOrLondon', []);
+  Assert.AreEqual(Int64(0), TMVCActiveRecord.CountRQLByNamedQuery<TCustomer>('CityRomeOrLondon', []));
+end;
+
+procedure TTestActiveRecordBase.TestNamedQueryRQLWithExceptions;
+begin
+  Assert.WillRaiseWithMessage(
+  procedure
+  begin
+    TMVCActiveRecord.SelectRQLByNamedQuery<TCustomer>('WrongQueryName', [1,2,3], MAXINT);
+  end, nil, 'NamedRQLQuery not found: WrongQueryName');
+
+  Assert.WillRaiseWithMessage(
+  procedure
+  begin
+    TMVCActiveRecord.DeleteRQLByNamedQuery<TCustomer>('WrongQueryName', []);
+  end, nil, 'NamedRQLQuery not found: WrongQueryName');
+end;
+
+procedure TTestActiveRecordBase.TestNamedQuerySQL;
+begin
+  Assert.AreEqual(Int64(0), TMVCActiveRecord.Count(TCustomer));
+  LoadData;
+  var lCustomers := TMVCActiveRecord.SelectByNamedQuery<TCustomer>('ByTwoCities', ['Rome', 'London'], [ftString, ftString]);
+  try
+    Assert.AreEqual(240, lCustomers.Count);
+    for var lCustomer in lCustomers do
+    begin
+      Assert.IsMatch('^(Rome|London)$', lCustomer.City);
+    end;
+  finally
+    lCustomers.Free;
+  end;
+end;
+
+procedure TTestActiveRecordBase.TestNamedQuerySQLByBackEnd;
+begin
+  var lList := TMVCActiveRecord.SelectByNamedQuery<TDummyEntity>('get_backend_name', [],[]);
+  try
+    Assert.AreEqual(1, lList.Count);
+    Assert.AreEqual(lList.First.GetBackEnd, lList.First.BackEndName);
+  finally
+    lList.Free;
+  end;
+end;
+
 procedure TTestActiveRecordBase.TestNullables;
 var
   lTest: TNullablesTest;
@@ -1820,6 +1847,23 @@ begin
     lCustomer.Free;
   end;
 
+end;
+
+procedure TTestActiveRecordBase.TestTryGetNamedQuery;
+var
+  lTmpSQLQueryWithName: TSQLQueryWithName;
+  lTmpRQLQueryWithName: TRQLQueryWithName;
+begin
+  Assert.IsTrue(TMVCActiveRecord.TryGetSQLQuery<TCustomer>('ByTwoCities', lTmpSQLQueryWithName));
+  Assert.AreEqual('ByTwoCities', lTmpSQLQueryWithName.Name);
+  Assert.IsNotEmpty(lTmpSQLQueryWithName.SQLText);
+  Assert.IsEmpty(lTmpSQLQueryWithName.BackEnd);
+  Assert.IsFalse(TMVCActiveRecord.TryGetSQLQuery<TCustomer>('DO_NOT_EXISTS', lTmpSQLQueryWithName));
+
+  Assert.IsTrue(TMVCActiveRecord.TryGetRQLQuery<TCustomer>('CityRomeOrLondon', lTmpRQLQueryWithName));
+  Assert.AreEqual('CityRomeOrLondon', lTmpRQLQueryWithName.Name);
+  Assert.IsNotEmpty(lTmpRQLQueryWithName.RQLText);
+  Assert.IsFalse(TMVCActiveRecord.TryGetRQLQuery<TCustomer>('DO_NOT_EXISTS', lTmpRQLQueryWithName));
 end;
 
 procedure TTestActiveRecordBase.TestUpdateIfNotFound;

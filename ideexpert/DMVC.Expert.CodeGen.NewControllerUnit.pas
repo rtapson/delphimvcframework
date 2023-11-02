@@ -111,9 +111,18 @@ var
   lFormName: string;
   lFileName: string;
   ControllerUnit: IDMVCCodeTemplate;
+  lBOClassesIntf: string;
+  lBOClassesImpl: string;
 begin
+
+
+  lBOClassesIntf := sBOClassesIntf;
+  lBOClassesImpl := Format(sBOClassesImpl, ['TPerson']);
+
   if ModuleIdent = '' then
   begin
+    lBOClassesIntf := '';
+    lBOClassesImpl := '';
     // http://stackoverflow.com/questions/4196412/how-do-you-retrieve-a-new-unit-name-from-delphis-open-tools-api
     // So using method mentioned by Marco Cantu.
     (BorlandIDEServices as IOTAModuleServices).GetNewModuleAndClassName('',
@@ -126,6 +135,18 @@ begin
 
   ControllerUnit := TDMVCControllerUnitTemplate.Create(lUnitIdent, FControllerClassName, FApiPath, FControllerEndpoint, FCreateCRUDMethods, FCreateActionFiltersMethods, FCreateIndexMethod);
   Result := TSourceFile.Create(ControllerUnit.GetSource.Text, []);
+//    [lUnitIdent, FControllerClassName, lIndexMethodIntf, lIndexMethodImpl, lActionFiltersMethodsIntf, lActionFiltersMethodsImpl, lCRUDMethodsIntf, lCRUDMethodsImpl]);
+//      lUnitIdent,
+//      FControllerClassName,
+//      lIndexMethodIntf,
+//      lIndexMethodImpl,
+//      lActionFiltersMethodsIntf,
+//      lActionFiltersMethodsImpl,
+//      lCRUDMethodsIntf,
+//      lCRUDMethodsImpl,
+//      lBOClassesIntf,
+//      lBOClassesImpl
+//      ]);
 end;
 
 { TNewJSONRPCUnitEx }
@@ -142,7 +163,6 @@ function TNewJSONRPCUnitEx.NewImplSource(const ModuleIdent, FormIdent,
   AncestorIdent: string): IOTAFile;
 var
   lUnitIdent: string;
-//  lFormName: string;
   lFileName: string;
   lDummy: String;
 begin

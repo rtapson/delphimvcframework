@@ -191,16 +191,8 @@ end;
 
 procedure LogException(const E: Exception; const AMessage: String);
 begin
-    LogE(E.ClassName + ': ' + AMessage);
+    LogE(E.ClassName + ': ' + E.Message + ' - (Custom Message: ' + AMessage + ')');
 end;
-
-// procedure LogException(
-// const AException: Exception;
-// const AMessage: string);
-// begin
-// Log.Error(Format('[%s] %s (Custom message: "%s")', [AException.ClassName,
-// AException.Message, AMessage]), LOGGERPRO_TAG);
-// end;
 
 procedure LogEnterMethod(const AMethodName: string);
 begin
@@ -266,27 +258,27 @@ end;
 
 procedure SetDefaultLogger(const aLogWriter: ILogWriter);
 begin
-    if gDefaultLogger = nil then
-    begin
-      TMonitor.Enter(gLock); // double check here
-      try
-        if gDefaultLogger = nil then
+  if gDefaultLogger = nil then
+  begin
+    TMonitor.Enter(gLock); // double check here
+    try
+      if gDefaultLogger = nil then
+      begin
+        if aLogWriter <> nil then
         begin
-          if aLogWriter <> nil then
-          begin
-            gDefaultLogger := aLogWriter;
-            Log.Info('Custom Logger initialized', LOGGERPRO_TAG);
-          end
-          else
-          begin
-            InitializeDefaultLogger;
-            Log.Info('Default Logger initialized', LOGGERPRO_TAG);
-          end;
+          gDefaultLogger := aLogWriter;
+          Log.Info('Custom Logger initialized', LOGGERPRO_TAG);
+        end
+        else
+        begin
+          InitializeDefaultLogger;
+          Log.Info('Default Logger initialized', LOGGERPRO_TAG);
         end;
-      finally
-        TMonitor.Exit(gLock);
       end;
+    finally
+      TMonitor.Exit(gLock);
     end;
+  end;
 end;
 
 procedure InitializeDefaultLogger;
