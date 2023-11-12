@@ -419,8 +419,8 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   end
   object lblBook: TLabel
     AlignWithMargins = True
-    Left = 3
-    Top = 950
+    Left = -6
+    Top = 1051
     Width = 538
     Height = 31
     Cursor = crHandPoint
@@ -442,7 +442,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     OnClick = lblBookClick
     OnMouseEnter = lblBookMouseEnter
     OnMouseLeave = lblBookMouseLeave
-    ExplicitLeft = 6
+    ExplicitLeft = 3
   end
   object lblCopyRight: TLabel
     Left = 48
@@ -462,8 +462,8 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     ParentFont = False
   end
   object btnOK: TButton
-    Left = 1050
-    Top = 938
+    Left = 994
+    Top = 1039
     Width = 154
     Height = 54
     Margins.Left = 6
@@ -476,12 +476,12 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     ModalResult = 1
     TabOrder = 3
     OnClick = btnOKClick
-    ExplicitLeft = 1036
-    ExplicitTop = 937
+    ExplicitLeft = 980
+    ExplicitTop = 1038
   end
   object btnCancel: TButton
-    Left = 1216
-    Top = 938
+    Left = 1160
+    Top = 1039
     Width = 154
     Height = 54
     Margins.Left = 6
@@ -493,8 +493,8 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 4
-    ExplicitLeft = 1202
-    ExplicitTop = 937
+    ExplicitLeft = 1146
+    ExplicitTop = 1038
   end
   object chkAddToProjectGroup: TCheckBox
     Left = 48
@@ -535,9 +535,9 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   end
   object Panel2: TPanel
     Left = 0
-    Top = 552
+    Top = 502
     Width = 546
-    Height = 396
+    Height = 526
     Margins.Left = 6
     Margins.Top = 6
     Margins.Right = 6
@@ -550,12 +550,12 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     TabOrder = 5
     DesignSize = (
       546
-      396)
+      526)
     object gbControllerUnitOptions: TGroupBox
-      Left = 16
-      Top = 58
+      Left = 32
+      Top = 184
       Width = 514
-      Height = 320
+      Height = 329
       Margins.Left = 6
       Margins.Top = 6
       Margins.Right = 6
@@ -565,10 +565,10 @@ object frmDMVCNewProject: TfrmDMVCNewProject
       TabOrder = 0
       DesignSize = (
         514
-        320)
+        329)
       object lblClassName: TLabel
-        Left = 32
-        Top = 220
+        Left = 54
+        Top = 245
         Width = 215
         Height = 27
         Margins.Left = 6
@@ -589,8 +589,8 @@ object frmDMVCNewProject: TfrmDMVCNewProject
         Caption = 'Label1'
       end
       object chkCreateIndexMethod: TCheckBox
-        Left = 32
-        Top = 50
+        Left = 54
+        Top = 75
         Width = 450
         Height = 34
         Margins.Left = 6
@@ -604,8 +604,8 @@ object frmDMVCNewProject: TfrmDMVCNewProject
         TabOrder = 0
       end
       object edtClassName: TEdit
-        Left = 32
-        Top = 260
+        Left = 54
+        Top = 285
         Width = 450
         Height = 33
         Margins.Left = 6
@@ -616,8 +616,8 @@ object frmDMVCNewProject: TfrmDMVCNewProject
         TabOrder = 3
       end
       object chkCreateActionFiltersMethods: TCheckBox
-        Left = 32
-        Top = 102
+        Left = 54
+        Top = 127
         Width = 450
         Height = 34
         Margins.Left = 6
@@ -631,8 +631,8 @@ object frmDMVCNewProject: TfrmDMVCNewProject
         TabOrder = 1
       end
       object chkCreateCRUDMethods: TCheckBox
-        Left = 32
-        Top = 154
+        Left = 54
+        Top = 179
         Width = 450
         Height = 34
         Margins.Left = 6
@@ -645,23 +645,35 @@ object frmDMVCNewProject: TfrmDMVCNewProject
         State = cbChecked
         TabOrder = 2
       end
+      object chkCreateControllerUnit: TCheckBox
+        Left = 21
+        Top = 33
+        Width = 412
+        Height = 34
+        Margins.Left = 6
+        Margins.Top = 6
+        Margins.Right = 6
+        Margins.Bottom = 6
+        Anchors = [akLeft, akTop, akRight]
+        Caption = 'Create Controller Unit'
+        Checked = True
+        State = cbChecked
+        TabOrder = 4
+        OnClick = chkCreateControllerUnitClick
+      end
     end
-    object chkCreateControllerUnit: TCheckBox
-      Left = 86
-      Top = 0
-      Width = 412
+    object chkMSHeap: TCheckBox
+      Left = 48
+      Top = 23
+      Width = 433
       Height = 34
       Margins.Left = 6
       Margins.Top = 6
       Margins.Right = 6
       Margins.Bottom = 6
-      Anchors = [akLeft, akTop, akRight]
-      Caption = 'Create Container Unit'
-      Checked = True
-      State = cbChecked
+      Anchors = [akTop]
+      Caption = 'Use MS Heap on MS Windows'
       TabOrder = 1
-      Visible = False
-      OnClick = chkCreateControllerUnitClick
     end
   end
   object GroupBox1: TGroupBox
@@ -833,7 +845,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
   object GroupBoxJSONRPC: TGroupBox
     Left = 574
     Top = 720
-    Width = 796
+    Width = 740
     Height = 210
     Margins.Left = 6
     Margins.Top = 6
@@ -842,9 +854,9 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     Anchors = [akLeft, akTop, akRight]
     Caption = 'JSON-RPC 2.0'
     TabOrder = 7
-    ExplicitWidth = 782
+    ExplicitWidth = 726
     DesignSize = (
-      796
+      740
       210)
     object Label3: TLabel
       Left = 32
@@ -860,7 +872,7 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     object EdtJSONRPCClassName: TEdit
       Left = 32
       Top = 144
-      Width = 734
+      Width = 678
       Height = 35
       Margins.Left = 6
       Margins.Top = 6
@@ -869,12 +881,12 @@ object frmDMVCNewProject: TfrmDMVCNewProject
       Anchors = [akLeft, akTop, akRight]
       TabOrder = 0
       TextHint = 'TMyJSONRPCObject'
-      ExplicitWidth = 720
+      ExplicitWidth = 664
     end
     object chkJSONRPC: TCheckBox
       Left = 32
       Top = 44
-      Width = 720
+      Width = 664
       Height = 34
       Margins.Left = 6
       Margins.Top = 6
@@ -885,13 +897,13 @@ object frmDMVCNewProject: TfrmDMVCNewProject
       Checked = True
       State = cbChecked
       TabOrder = 1
-      ExplicitWidth = 706
+      ExplicitWidth = 650
     end
   end
   object chkUseSpring4DContainer: TCheckBox
-    Left = 48
-    Top = 512
-    Width = 574
+    Left = 53
+    Top = 582
+    Width = 412
     Height = 34
     Margins.Left = 6
     Margins.Top = 6
@@ -899,6 +911,18 @@ object frmDMVCNewProject: TfrmDMVCNewProject
     Margins.Bottom = 6
     Caption = 'Use Spring4D Container'
     TabOrder = 8
+  end
+  object CheckBox1: TCheckBox
+    Left = 86
+    Top = 629
+    Width = 412
+    Height = 34
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
+    Caption = 'Create Aurelius units'
+    TabOrder = 9
   end
   object ApplicationEvents: TApplicationEvents
     OnIdle = ApplicationEventsIdle

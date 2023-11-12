@@ -132,7 +132,7 @@
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.Registration.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Splash.Registration.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.Forms.GenerateAureliusControllers.pas">
-            <Form>Form1</Form>
+            <Form>GenerateAureliusControllersForm</Form>
         </DCCReference>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.Menus.ProjectManagerMenuIntf.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.Intf.pas"/>
@@ -140,6 +140,8 @@
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.ControllerUnit.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.EmptyUnit.pas"/>
         <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.NewEmptyUnit.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.Codegen.GenerateAureliusControllers.pas"/>
+        <DCCReference Include="..\..\ideexpert\DMVC.Expert.CodeGen.Templates.AureliusControllerUnit.pas"/>
         <RcItem Include="..\..\ideexpert\DMVC.Expert.NewProject.ico">
             <ResourceType>ICON</ResourceType>
             <ResourceId>DMVCNewProjectIcon</ResourceId>
@@ -199,6 +201,12 @@
                 </DeployFile>
                 <DeployFile LocalName="$(BDS)\Redist\osx64\libcgsqlite3.dylib" Class="DependencyModule"/>
                 <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\20.0\Bpl\dmvcframeworkDT104.bpl" Configuration="Debug" Class="ProjectOutput"/>
+                <DeployFile LocalName="C:\Users\Public\Documents\Embarcadero\Studio\22.0\Bpl\dmvcframeworkDT113.bpl" Configuration="Debug" Class="ProjectOutput">
+                    <Platform Name="Win32">
+                        <RemoteName>dmvcframeworkDT.bpl</RemoteName>
+                        <Overwrite>true</Overwrite>
+                    </Platform>
+                </DeployFile>
                 <DeployClass Name="AdditionalDebugSymbols">
                     <Platform Name="OSX32">
                         <Operation>1</Operation>

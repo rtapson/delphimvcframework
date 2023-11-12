@@ -30,6 +30,7 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
     ActivePage = AureliusTabSheet
     Align = alClient
     TabOrder = 0
+    OnChange = PageControl1Change
     ExplicitWidth = 1088
     ExplicitHeight = 595
     object OptionsTabSheet: TTabSheet
@@ -207,38 +208,6 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
       Caption = 'AureliusTabSheet'
       ImageIndex = 1
       TabVisible = False
-      object Label2: TLabel
-        AlignWithMargins = True
-        Left = 6
-        Top = 6
-        Width = 1074
-        Height = 27
-        Margins.Left = 6
-        Margins.Top = 6
-        Margins.Right = 6
-        Margins.Bottom = 6
-        Align = alTop
-        Caption = 'Select the Aurelius Entities to create controllers for.'
-        ExplicitWidth = 500
-      end
-      object AureliusEntitiesCheckListBox: TCheckListBox
-        AlignWithMargins = True
-        Left = 6
-        Top = 45
-        Width = 1074
-        Height = 451
-        Margins.Left = 6
-        Margins.Top = 6
-        Margins.Right = 6
-        Margins.Bottom = 6
-        Align = alClient
-        Columns = 2
-        CheckBoxPadding = 2
-        ItemHeight = 34
-        TabOrder = 0
-        ExplicitWidth = 1060
-        ExplicitHeight = 450
-      end
       object CommandPanel: TPanel
         Left = 0
         Top = 502
@@ -250,26 +219,9 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
         Margins.Bottom = 6
         Align = alBottom
         BevelOuter = bvNone
-        TabOrder = 1
+        TabOrder = 0
         ExplicitTop = 501
         ExplicitWidth = 1072
-        DesignSize = (
-          1086
-          76)
-        object AureliusSelectButton: TButton
-          Left = 902
-          Top = 10
-          Width = 150
-          Height = 55
-          Margins.Left = 6
-          Margins.Top = 6
-          Margins.Right = 6
-          Margins.Bottom = 6
-          Anchors = [akRight, akBottom]
-          Caption = 'Select'
-          TabOrder = 0
-          ExplicitLeft = 888
-        end
       end
     end
   end
@@ -290,22 +242,8 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
     DesignSize = (
       1114
       82)
-    object btnBack: TButton
-      Left = 600
-      Top = 18
-      Width = 150
-      Height = 50
-      Margins.Left = 6
-      Margins.Top = 6
-      Margins.Right = 6
-      Margins.Bottom = 6
-      Action = BackAction
-      Anchors = [akRight, akBottom]
-      TabOrder = 0
-      ExplicitLeft = 586
-    end
     object btnCancel: TButton
-      Left = 924
+      Left = 868
       Top = 18
       Width = 150
       Height = 50
@@ -317,11 +255,11 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
       Cancel = True
       Caption = 'Cancel'
       ModalResult = 2
-      TabOrder = 1
-      ExplicitLeft = 910
+      TabOrder = 0
+      ExplicitLeft = 854
     end
     object btnOK: TButton
-      Left = 762
+      Left = 706
       Top = 18
       Width = 150
       Height = 50
@@ -333,23 +271,8 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
       Anchors = [akRight, akBottom]
       Default = True
       ModalResult = 1
-      TabOrder = 2
-      ExplicitLeft = 748
-    end
-    object Button1: TButton
-      Left = 106
-      Top = 16
-      Width = 150
-      Height = 52
-      Margins.Left = 6
-      Margins.Top = 6
-      Margins.Right = 6
-      Margins.Bottom = 6
-      Anchors = [akLeft, akBottom]
-      Caption = 'Debug'
-      TabOrder = 3
-      Visible = False
-      OnClick = Button1Click
+      TabOrder = 1
+      ExplicitLeft = 692
     end
   end
   object ActionList: TActionList
@@ -360,18 +283,8 @@ object frmDMVCNewUnit: TfrmDMVCNewUnit
       Caption = 'DMVC Controller'
       OnExecute = DMVCActionExecute
     end
-    object AureliusAction: TAction
-      Caption = 'Aurelius Controller'
-      OnExecute = AureliusActionExecute
-    end
     object ValidationAction: TAction
       Caption = 'ValidationAction'
-    end
-    object BackAction: TAction
-      Caption = 'Back'
-      Enabled = False
-      Visible = False
-      OnExecute = BackActionExecute
     end
     object NextOkAction: TAction
       Caption = 'NextOkAction'

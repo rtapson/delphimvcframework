@@ -36,15 +36,15 @@ interface
 
 uses
   Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
-  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls;
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, Vcl.StdCtrls, Vcl.ExtCtrls, Vcl.CheckLst;
 
 type
-  TForm1 = class(TForm)
+  TGenerateAureliusControllersForm = class(TForm)
     btnOK: TButton;
     btnCancel: TButton;
-    ButtonedEdit1: TButtonedEdit;
+    EntitiesList: TCheckListBox;
     Label1: TLabel;
-    Label2: TLabel;
+    procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
   public
@@ -52,10 +52,32 @@ type
   end;
 
 var
-  Form1: TForm1;
+  GenerateAureliusControllersForm: TGenerateAureliusControllersForm;
 
 implementation
 
 {$R *.dfm}
+
+uses
+  DMVC.Expert.Codegen.GenerateAureliusControllers;
+
+procedure TGenerateAureliusControllersForm.FormCreate(Sender: TObject);
+begin
+  var Entities := TGenerateAureliusControllers.Create;
+  try
+    Entities.GetAureliusEntities;
+    for var AureliusItem in Entities.EntityNames do
+    begin
+      EntitiesList.Items.AddObject(AureliusItem.EntityName,
+        TAureliusListItem.Create(
+          AureliusItem.FileName,
+          AureliusItem.EntityName,
+          AureliusItem.EntityClassName,
+          AureliusItem.EnityUnitName));
+    end;
+  finally
+    Entities.Free;
+  end;
+end;
 
 end.

@@ -53,6 +53,7 @@ type
 
     procedure NewController;
     procedure NewUnit;
+    procedure NewAureliusController;
   public
     procedure Execute(Const MenuContextList: IInterfaceList);
     function PreExecute(Const MenuContextList: IInterfaceList): Boolean;
@@ -78,7 +79,8 @@ uses
   DMVC.Expert.CodeGen.NewControllerUnit,
   DMVC.Expert.Forms.NewUnitWizard,
 //  DMVC.Expert.CodeGen.Templates.EmptyUnit,
-  DMVC.Expert.CodeGen.NewEmptyUnit;
+  DMVC.Expert.CodeGen.NewEmptyUnit,
+  DMVC.Expert.Forms.GenerateAureliusControllers;
 
 resourcestring
   strSepCaption = '-';
@@ -258,6 +260,7 @@ procedure TDMVCProjectMenuCreatorHelper.Execute(const MenuContextList: IInterfac
 begin
   if FName = strNewControllerName then NewController;
   if FName = strNewUnitName then NewUnit;
+  if Fname = strNewAureliuscontrollerName then NewAureliusController;
 
 
 end;
@@ -305,6 +308,19 @@ end;
 function TDMVCProjectMenuCreatorHelper.GetVerb: String;
 begin
   Result := FVerb;
+end;
+
+procedure TDMVCProjectMenuCreatorHelper.NewAureliusController;
+begin
+  var GenAur := TGenerateAureliusControllersForm.Create(nil);
+  try
+    if GenAur.ShowModal = mrOk then
+    begin
+      //Get the Entities that are selected and create new controller units
+    end;
+  finally
+    GenAur.Free;
+  end;
 end;
 
 procedure TDMVCProjectMenuCreatorHelper.NewController;

@@ -95,6 +95,7 @@ type
     lblCopyRight: TLabel;
     chkUseSpring4DContainer: TCheckBox;
     chkMSHeap: TCheckBox;
+    CheckBox1: TCheckBox;
     procedure chkCreateControllerUnitClick(Sender: TObject);
     procedure FormCreate(Sender: TObject);
     procedure Image1Click(Sender: TObject);

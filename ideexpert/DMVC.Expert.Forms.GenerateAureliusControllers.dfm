@@ -1,65 +1,79 @@
-object Form1: TForm1
+object GenerateAureliusControllersForm: TGenerateAureliusControllersForm
   Left = 0
   Top = 0
   Caption = 'Generate Controllers for Aurelius Entities'
-  ClientHeight = 258
-  ClientWidth = 403
+  ClientHeight = 515
+  ClientWidth = 820
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
-  Font.Height = -12
+  Font.Height = -24
   Font.Name = 'Segoe UI'
   Font.Style = []
+  OnCreate = FormCreate
+  PixelsPerInch = 192
   DesignSize = (
-    403
-    258)
-  TextHeight = 15
+    820
+    515)
+  TextHeight = 32
   object Label1: TLabel
-    Left = 32
-    Top = 8
-    Width = 97
-    Height = 15
-    Caption = 'Controllers Folder:'
-  end
-  object Label2: TLabel
-    Left = 40
-    Top = 96
-    Width = 143
-    Height = 15
-    Caption = 'Controller Registration File:'
+    Left = 11
+    Top = 11
+    Width = 529
+    Height = 32
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
+    Caption = 'Select the Entity classes to generate controller for'
   end
   object btnOK: TButton
-    Left = 239
-    Top = 225
-    Width = 75
-    Height = 25
+    Left = 468
+    Top = 449
+    Width = 150
+    Height = 50
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
     Anchors = [akRight, akBottom]
     Caption = 'OK'
     Default = True
     ModalResult = 1
     TabOrder = 0
-    ExplicitLeft = 268
-    ExplicitTop = 305
+    ExplicitLeft = 454
+    ExplicitTop = 448
   end
   object btnCancel: TButton
-    Left = 320
-    Top = 225
-    Width = 75
-    Height = 25
+    Left = 630
+    Top = 449
+    Width = 150
+    Height = 50
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
     Anchors = [akRight, akBottom]
     Cancel = True
     Caption = 'Cancel'
     ModalResult = 2
     TabOrder = 1
-    ExplicitLeft = 349
-    ExplicitTop = 305
+    ExplicitLeft = 616
+    ExplicitTop = 448
   end
-  object ButtonedEdit1: TButtonedEdit
-    Left = 48
+  object EntitiesList: TCheckListBox
+    Left = 11
     Top = 48
-    Width = 313
-    Height = 23
+    Width = 770
+    Height = 389
+    Margins.Left = 6
+    Margins.Top = 6
+    Margins.Right = 6
+    Margins.Bottom = 6
+    Anchors = [akLeft, akTop, akRight, akBottom]
+    ItemHeight = 34
     TabOrder = 2
-    Text = 'ButtonedEdit1'
+    ExplicitWidth = 756
+    ExplicitHeight = 388
   end
 end
