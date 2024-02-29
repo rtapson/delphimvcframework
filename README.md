@@ -1,7 +1,7 @@
 # DelphiMVCFramework ![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg) ![GitHub All Releases](https://img.shields.io/github/downloads/danieleteti/delphimvcframework/total?label=Downloads)
 
-![](https://img.shields.io/badge/stable-dmvcframework--3.4.0--neon-blue)
-![](https://img.shields.io/badge/beta-dmvcframework--3.4.1--sodium--beta-red)  
+![](https://img.shields.io/badge/stable-dmvcframework--3.4.1--sodium-blue)
+![](https://img.shields.io/badge/beta-dmvcframework--3.4.2--magnesium--beta-red)  
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
@@ -16,12 +16,13 @@
     - [How to partecipate to DMVCFramework development and/or tests](#how-to-partecipate-to-dmvcframework-development-andor-tests)
   - [Sponsors](#sponsors)
   - [What users say about DMVCFramework](#what-users-say-about-dmvcframework)
-  - [What's New in DelphiMVCFramework-3.4.0-neon (stable version)](#whats-new-in-delphimvcframework-340-neon-stable-version)
+  - [What's New in DMVCFramework-3.4.1-sodium (stable version)](#whats-new-in-dmvcframework-341-sodium-stable-version)
   - [Older Versions](#older-versions)
-    - [What's New in dmvcframework-3.3.0-fluorine](#whats-new-in-dmvcframework-330-fluorine)
-    - [What's New in dmvcframework-3.2.3-radium](#whats-new-in-dmvcframework-323-radium)
+    - [What's New in DMVCFramework-3.4.0-neon](#whats-new-in-dmvcframework-340-neon)
+    - [What's New in DMVCFramework-3.3.0-fluorine](#whats-new-in-dmvcframework-330-fluorine)
+    - [What's New in DMVCFramework-3.2.3-radium](#whats-new-in-dmvcframework-323-radium)
     - [Bug Fix in 3.2.3-radium](#bug-fix-in-323-radium)
-    - [What's new in DelphiMVCFramework-3.2.2-nitrogen](#whats-new-in-delphimvcframework-322-nitrogen)
+    - [What's new in DMVCFramework-3.2.2-nitrogen](#whats-new-in-dmvcframework-322-nitrogen)
     - [Bug Fixes in 3.2.2-nitrogen](#bug-fixes-in-322-nitrogen)
     - [Breaking Changes in 3.2.2-nitrogen](#breaking-changes-in-322-nitrogen)
     - [What's New in DelphiMVCFramework 3.2.1-carbon](#whats-new-in-delphimvcframework-321-carbon)
@@ -171,8 +172,9 @@ While DMVCFramework is born from the head of Daniele Teti from bit Time Professi
 
 |COMPANY NAME | LOGO|
 |-----------------------------------------------------------------------|------------------------------------------------------------------------|
-|[bit Time Professionals ](https://www.bittimeprofessionals.com)		|![](docs/sponsorlogos/bittimeprofessionals.png)  |
-|[bit Time Software](https://www.bittime.it)                            |![](docs/sponsorlogos/bittimesoftware.png)       |
+|[bit Time Professionals](https://www.bittimeprofessionals.com)	           |![](docs/sponsorlogos/bittimeprofessionals.png)        |
+|[bit Time Professionals - ITALY](https://www.bittimeprofessionals.it)	   |![](docs/sponsorlogos/bittimeprofessionals_italy.png)  |
+|[bit Time Software](https://www.bittime.it)                               |![](docs/sponsorlogos/bittimesoftware.png)             |
 
 
 
@@ -215,9 +217,16 @@ Congratulations to Daniele Teti and all the staff for the excellent work!" -- Ma
 > "I managed to generate an API for my application thanks to this framework, it is truly useful and efficient!" -- J. Urbani
 
 
-## What's New in DelphiMVCFramework-3.4.0-neon (stable version)
+## What's New in DMVCFramework-3.4.1-sodium (stable version)
 
->👉 Deeper analisys of what's new in DelphiMVCFramework-3.4.0-neone is available on [Daniele Teti Blog](http://www.danieleteti.it/post/delphimvcframework-3-4-0-neon/) 👈
+>👉 A deep analisys of what's new in DelphiMVCFramework-3.4.1-sodium is available on [Daniele Teti Blog](https://www.danieleteti.it/post/delphimvcframework-3-4-1-sodium/) 👈
+
+  
+## Older Versions
+
+### What's New in DMVCFramework-3.4.0-neon
+
+>👉 Deeper analisys of what's new in DelphiMVCFramework-3.4.0-neon is available on [Daniele Teti Blog](http://www.danieleteti.it/post/delphimvcframework-3-4-0-neon/) 👈
 
 - ⚡ Added support for dotEnv
 - ⚡ Added MSHeap memory manager for Win32 and Win64 (https://github.com/RDP1974/DelphiMSHeap)
@@ -402,10 +411,9 @@ Congratulations to Daniele Teti and all the staff for the excellent work!" -- Ma
   `MVCNamedSQLQuery` allows to define a "named query" which is, well, a SQL query with a name. Then such query can be used by the method `SelectByNamedQuery<T>` or `SelectByNamedQuery`. Moreover in the attribute it is possible to define on which backend engine that query is usable. In this way you can define optimized query for each supported DMBS you need.
   
   More info [here](http://www.danieleteti.it/post/delphimvcframework-3-4-0-neon/)  
-  
-## Older Versions
 
-### What's New in dmvcframework-3.3.0-fluorine
+
+### What's New in DMVCFramework-3.3.0-fluorine
 
 - ⚡ Support for Delphi 11.3 Alexandria
 - ⚡ Ability to use records in swagger param and response attributes [Issue 649](https://github.com/danieleteti/delphimvcframework/issues/649)
@@ -418,7 +426,7 @@ Congratulations to Daniele Teti and all the staff for the excellent work!" -- Ma
 - 🐞 [PR 651](https://github.com/danieleteti/delphimvcframework/pull/651) Thanks to [Francisco Zanini](https://github.com/zaniniflz)
 
 
-### What's New in dmvcframework-3.2.3-radium
+### What's New in DMVCFramework-3.2.3-radium
 
 - ⚡ Default error responses contains the official "reason string" associated to the HTTP status code (this can be a breaking change for some generic client which doesn't correctly interpret the http status code)
 - ⚡ Added static method `HTTP_STATUS.ReasonStringFor(HTTPStatusCode)` wich returns the standard `ReasonString` for a given HTTP status code.
@@ -508,7 +516,7 @@ Congratulations to Daniele Teti and all the staff for the excellent work!" -- Ma
 
 More details about dmvcframework-3.2.3-radium fixes [here](https://github.com/danieleteti/delphimvcframework/milestone/8?closed=1)
 
-### What's new in DelphiMVCFramework-3.2.2-nitrogen
+### What's new in DMVCFramework-3.2.2-nitrogen
 
 - ⚡New! Support for Delphi 11.x Alexandria
 

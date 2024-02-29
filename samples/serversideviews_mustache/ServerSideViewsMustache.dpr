@@ -2,15 +2,14 @@ program ServerSideViewsMustache;
 
 {$APPTYPE CONSOLE}
 
-
 uses
   System.SysUtils,
   MVCFramework,
   MVCFramework.Signal,
-  {$IFDEF MSWINDOWS}
+{$IFDEF MSWINDOWS}
   Winapi.ShellAPI,
   Winapi.Windows,
-  {$ENDIF }
+{$ENDIF }
   IdHTTPWebBrokerBridge,
   MVCFramework.View.Renderers.Mustache,
   Web.WebReq,
@@ -25,7 +24,6 @@ uses
 
 {$R *.res}
 
-
 procedure RunServer(APort: Integer);
 var
   LServer: TIdHTTPWebBrokerBridge;
@@ -36,9 +34,9 @@ begin
   try
     LServer.DefaultPort := APort;
     LServer.Active := True;
-    {$IFDEF MSWINDOWS}
-    ShellExecute(0, 'open', 'http://localhost:8080', nil, nil, SW_SHOW);
-    {$ENDIF}
+{$IFDEF MSWINDOWS}
+    ShellExecute(0, 'open', PChar('http://localhost:' + inttostr(APort)), nil, nil, SW_SHOW);
+{$ENDIF}
     Write('Ctrl+C  to stop the server');
     WaitForTerminationSignal;
     EnterInShutdownState;
@@ -56,10 +54,10 @@ begin
 
     // these helpers will be available to the mustache views as if they were the standard ones
     TMVCMustacheHelpers.OnLoadCustomHelpers := procedure(var MustacheHelpers: TSynMustacheHelpers)
-    begin
-      TSynMustache.HelperAdd(MustacheHelpers, 'MyHelper1', TMyMustacheHelpers.MyHelper1);
-      TSynMustache.HelperAdd(MustacheHelpers, 'MyHelper2', TMyMustacheHelpers.MyHelper2);
-    end;
+      begin
+        TSynMustache.HelperAdd(MustacheHelpers, 'MyHelper1', TMyMustacheHelpers.MyHelper1);
+        TSynMustache.HelperAdd(MustacheHelpers, 'MyHelper2', TMyMustacheHelpers.MyHelper2);
+      end;
 
     RunServer(8080);
   except

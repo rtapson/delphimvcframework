@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -420,7 +420,7 @@ begin
         begin
           FAuthenticationHandler.OnAuthentication(AContext, LUsername, LPassword, LRolesList, LIsValid, LSessionData);
           if not LIsValid then
-            raise EMVCJWTException.Create(HTTP_STATUS.Forbidden, 'Forbidden');
+            raise EMVCJWTException.Create(HTTP_STATUS.Unauthorized, 'Unauthorized');
         end;
 
         LJWTValue := TJWT.Create(FSecret, FLeewaySeconds);

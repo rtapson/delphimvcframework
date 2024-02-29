@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -85,7 +85,6 @@ begin
 
     for lKeyValue in TableMap.fMap do
     begin
-      // if not(foTransient in lKeyValue.Value.FieldOptions) then
       if lKeyValue.Value.Writeable then
       begin
         lSB.Append(GetFieldNameForSQL(lKeyValue.Value.FieldName) + ',');

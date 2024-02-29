@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -161,6 +161,7 @@ type
     property SerializationType: TMVCSerializationType read FSerializationType;
   end;
 
+  //Used by TDataSetUtils
   MVCColumnAttribute = class(TCustomAttribute)
   private
     FFieldName: string;
@@ -457,6 +458,7 @@ implementation
 
 uses
   Data.FmtBcd,
+  Data.SqlTimSt,
   MVCFramework.Nullables,
   System.Generics.Defaults;
 
@@ -1190,8 +1192,9 @@ begin
       begin
         aRTTIField.SetValue(AObject, Frac(AField.AsDateTime));
       end;
-    ftTimeStamp:
+    ftTimeStamp, ftTimeStampOffset:
       begin
+        // Conversion between timestampoffset and TDateTime is automatically done by "AsDateTime"
         aRTTIField.SetValue(AObject, AField.AsDateTime);
       end;
     ftBoolean:

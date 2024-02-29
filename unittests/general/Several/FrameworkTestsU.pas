@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -240,6 +240,8 @@ type
     procedure TestStringToDateTime_NewYork;
     [Test]
     procedure TestStringToDateTime_Mumbai;
+    [Test]
+    procedure TestDteToStringAndBack;
   end;
 
   [TestFixture]
@@ -1965,6 +1967,14 @@ begin
   s1 := DateTimeToStr(lDate);
   s2 := DateTimeToStr(lDateToCompare);
   Assert.areEqual(s1,s2, 'UTC with no time zone (in no DST period)');
+end;
+
+procedure TTestUTC.TestDteToStringAndBack;
+begin
+  var lDate := EncodeDateTime(2011,11,17,12,0,0,0);
+  var lDateStr := DateTimeToISOTimeStamp(lDate);
+  var lDate2 := ISOTimeStampToDateTime(lDateStr);
+  Assert.AreEqual(lDate, lDate2);
 end;
 
 procedure TTestUTC.TestStringToDateTime_in_DST_period;

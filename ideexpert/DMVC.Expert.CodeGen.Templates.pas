@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -71,8 +71,7 @@ resourcestring
     'procedure RunServer(APort: Integer);' + sLineBreak +
     'var' + sLineBreak +
     '  LServer: TIdHTTPWebBrokerBridge;' + sLineBreak +
-    'begin' + sLineBreak +
-    '  Writeln(''** DMVCFramework Server ** build '' + DMVCFRAMEWORK_VERSION);' + sLineBreak +
+    'begin' + sLineBreak +    
     '  LServer := TIdHTTPWebBrokerBridge.Create(nil);' + sLineBreak +
     '  try' + sLineBreak +
     '    LServer.OnParseAuthentication := TMVCParseAuthentication.OnParseAuthentication;' + sLineBreak +
@@ -81,8 +80,8 @@ resourcestring
     '    LServer.MaxConnections := dotEnv.Env(''dmvc.webbroker.max_connections'', 0);' + sLineBreak +
     '    LServer.ListenQueue := dotEnv.Env(''dmvc.indy.listen_queue'', 500);' + sLineBreak + sLineBreak +
     '    LServer.Active := True;' + sLineBreak +
-    '    WriteLn(''Listening on port '', APort);' + sLineBreak +
-    '    Write(''CTRL+C to shutdown the server'');' + sLineBreak +
+    '    LogI(''Listening on port '' + APort.ToString);' + sLineBreak +
+    '    LogI(''Application started. Press Ctrl+C to shut down.'');' + sLineBreak +
     '    WaitForTerminationSignal; ' + sLineBreak +
     '    EnterInShutdownState; ' + sLineBreak +
     '    LServer.Active := False; ' + sLineBreak +
@@ -98,7 +97,9 @@ resourcestring
     '  // DMVCFramework Specific Configuration ' + sLineBreak +
     '  // When MVCSerializeNulls = True empty nullables and nil are serialized as json null.' + sLineBreak +
     '  // When MVCSerializeNulls = False empty nullables and nil are not serialized at all.' + sLineBreak +
-    '  MVCSerializeNulls := True;' + sLineBreak + sLineBreak +
+    '  MVCSerializeNulls := True;' + sLineBreak + 
+	'  UseConsoleLogger := True;' + sLineBreak + sLineBreak +	
+    '  LogI(''** DMVCFramework Server ** build '' + DMVCFRAMEWORK_VERSION);' + sLineBreak +	
     '  try' + sLineBreak +
     '    if WebRequestHandler <> nil then' + sLineBreak +
     '      WebRequestHandler.WebModuleClass := WebModuleClass;' + sLineBreak +
@@ -113,7 +114,7 @@ resourcestring
     '                 .UseProfile(''prod'') //if available loads the prod environment (.env.prod)' + sLineBreak +
     '                 .UseLogger(procedure(LogItem: String)' + sLineBreak +
     '                            begin' + sLineBreak +
-    '                              LogW(''dotEnv: '' + LogItem);' + sLineBreak +
+    '                              LogD(''dotEnv: '' + LogItem);' + sLineBreak +
     '                            end)' + sLineBreak +
     '                 .Build();             //uses the executable folder to look for .env* files' + sLineBreak +
     '      end);' + sLineBreak +
@@ -129,7 +130,7 @@ resourcestring
     '    RunServer(dotEnv.Env(''dmvc.server.port'', %1:d));' + sLineBreak +
     '  except' + sLineBreak +
     '    on E: Exception do' + sLineBreak +
-    '      Writeln(E.ClassName, '': '', E.Message);' + sLineBreak +
+    '      LogF(E.ClassName + '': '' + E.Message);' + sLineBreak +
     '  end;' + sLineBreak +
     'end.' + sLineBreak;
 
@@ -173,22 +174,22 @@ resourcestring
   sIndexMethodIntf =
     '    [MVCPath]' + sLineBreak +
     '    [MVCHTTPMethod([httpGET])]' + sLineBreak +
-    '    procedure Index;' + sLineBreak + sLineBreak +
+    '    function Index: String;' + sLineBreak + sLineBreak +
     '    [MVCPath(''/reversedstrings/($Value)'')]' + sLineBreak +
     '    [MVCHTTPMethod([httpGET])]' + sLineBreak +
     '    [MVCProduces(TMVCMediaType.TEXT_PLAIN)]' + sLineBreak +
-    '    procedure GetReversedString(const Value: String);' + sLineBreak;
+    '    function GetReversedString(const Value: String): String;' + sLineBreak;
 
   // 0 - Class Name
   sIndexMethodImpl =
-    'procedure %0:s.Index;' + sLineBreak +
+    'function %0:s.Index: String;' + sLineBreak +
     'begin' + sLineBreak +
     '  //use Context property to access to the HTTP request and response ' + sLineBreak +
-    '  Render(''Hello DelphiMVCFramework World'');' + sLineBreak +
+    '  Result := ''Hello DelphiMVCFramework World'';' + sLineBreak +
     'end;' + sLineBreak + sLineBreak +
-    'procedure %0:s.GetReversedString(const Value: String);' + sLineBreak +
+    'function %0:s.GetReversedString(const Value: String): String;' + sLineBreak +
     'begin' + sLineBreak +
-    '  Render(System.StrUtils.ReverseString(Value.Trim));' + sLineBreak +
+    '  Result := System.StrUtils.ReverseString(Value.Trim);' + sLineBreak +
     'end;' + sLineBreak;
 
   sCRUDMethodsIntf =

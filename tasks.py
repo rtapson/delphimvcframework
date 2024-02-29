@@ -225,9 +225,6 @@ def init_build(version):
     f.write("BUILD DATETIME " + datetime.now().isoformat() + "\n")
     f.close()
     copy2("README.md", g_output_folder)
-    copy2("3_0_0_breaking_changes.md", g_output_folder)
-    copy2("3_1_0_breaking_changes.md", g_output_folder)
-    copy2("3_2_0_breaking_changes.md", g_output_folder)
     copy2("License.txt", g_output_folder)
 
 
@@ -312,7 +309,7 @@ def clean(ctx, folder=None):
 
 
 @task()
-def tests32(ctx, delphi_version):
+def tests32(ctx):
     """Builds and execute the unit tests"""
     import os
 
@@ -323,11 +320,11 @@ def tests32(ctx, delphi_version):
 
     print("\nBuilding Unit Test client")
     build_delphi_project(
-        ctx, testclient, config="CI", delphi_version=delphi_version, platform="Win32"
+        ctx, testclient, config="CI", platform="Win32"
     )
     print("\nBuilding Test Server")
     build_delphi_project(
-        ctx, testserver, config="CI", delphi_version=delphi_version, platform="Win32"
+        ctx, testserver, config="CI", platform="Win32"
     )
 
     # import subprocess
@@ -393,15 +390,36 @@ def tests64(ctx):
 def tests(ctx):
     pass
 
+def get_version_from_file():
+    with open(r".\sources\dmvcframeworkbuildconsts.inc") as f:
+        lines = f.readlines()   
+    res = [x for x in lines if "DMVCFRAMEWORK_VERSION" in x]
+    if len(res) != 1:
+        raise Exception("Cannot find DMVCFRAMEWORK_VERSION in dmvcframeworkbuildconsts.inc file")
+    version_line: str = res[0]
+    version_line = version_line.strip(" ;\t")
+    pieces = version_line.split("=")
+    if len(pieces) != 2:
+        raise Exception("Version line in wrong format in dmvcframeworkbuildconsts.inc file: " + version_line)
+    version = pieces[1].strip("' ")
+    if not 'framework' in version:
+        version = "dmvcframework-" + version
+    if "beta" in version.lower():
+        print(Fore.RESET + Fore.RED + "WARNING - BETA VERSION: " + version + Fore.RESET)
+    else:
+        print(Fore.RESET + Fore.GREEN + "BUILDING VERSION: " + version + Fore.RESET)
+    return version
 
 @task()
 def release(
     ctx,
-    version="DEBUG",
     skip_build=False,
     skip_tests=False,
 ):
     """Builds all the projects, executes integration tests and prepare the release"""
+
+    version = get_version_from_file()
+
     init_build(version)
 
     if not skip_tests:

@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -128,7 +128,7 @@ type
     HATEOAS_PROP_NAME = 'links';
     X_HTTP_Method_Override = 'X-HTTP-Method-Override';
     MAX_RECORD_COUNT = 100;
-    COPYRIGHT = 'Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team';
+    COPYRIGHT = 'Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team';
   end;
 
   HATEOAS = record
@@ -787,12 +787,20 @@ var
 
 function URLEncode(const Value: string): string; overload;
 begin
+  {$IF defined(BERLINORBETTER)}
+  Result := TNetEncoding.URL.EncodeQuery(Value);
+  {$ELSE}
   Result := TNetEncoding.URL.Encode(Value);
+  {$ENDIF}
 end;
 
 function URLDecode(const Value: string): string;
 begin
+  {$IF defined(BERLINORBETTER)}
+  Result := TNetEncoding.URL.URLDecode(Value);
+  {$ELSE}
   Result := TNetEncoding.URL.Decode(Value);
+  {$ENDIF}
 end;
 
 function AppPath: string;

@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -32,7 +32,7 @@ uses
   MVCFramework.RESTClient,
   MVCFramework.JSONRPC.Client,
   System.DateUtils,
-  System.Hash, System.Rtti;
+  System.Hash, System.Rtti, MVCFramework.Commons;
 
 type
 
@@ -236,6 +236,23 @@ type
     [Test]
     [Category('renders,exceptions')]
     procedure TestEMVCException4;
+
+    [Test]
+    [Category('renders,exceptions')]
+    [TestCase('404'+'invalid_accept',               '404,/invalidurl,invalid_accept,' + TMVCMediaType.APPLICATION_JSON)]
+    [TestCase('404'+TMVCMediaType.TEXT_HTML,        '404,/invalidurl,' + TMVCMediaType.TEXT_HTML + ',' + TMVCMediaType.TEXT_HTML)]
+    [TestCase('404'+TMVCMediaType.TEXT_PLAIN,       '404,/invalidurl,' +  TMVCMediaType.TEXT_PLAIN + ',' + TMVCMediaType.TEXT_PLAIN)]
+    [TestCase('404'+TMVCMediaType.APPLICATION_JSON, '404,/invalidurl,' + TMVCMediaType.APPLICATION_JSON + ',' + TMVCMediaType.APPLICATION_JSON)]
+    [TestCase('500'+'invalid_accept',               '500,/exception/emvcexception1,invalid_accept,' + TMVCMediaType.APPLICATION_JSON)]
+    [TestCase('500'+TMVCMediaType.TEXT_HTML,        '500,/exception/emvcexception1,' + TMVCMediaType.TEXT_HTML + ',' + TMVCMediaType.TEXT_HTML)]
+    [TestCase('500'+TMVCMediaType.TEXT_PLAIN,       '500,/exception/emvcexception1,' +  TMVCMediaType.TEXT_PLAIN + ',' + TMVCMediaType.TEXT_PLAIN)]
+    [TestCase('500'+TMVCMediaType.APPLICATION_JSON, '500,/exception/emvcexception1,' + TMVCMediaType.APPLICATION_JSON + ',' + TMVCMediaType.APPLICATION_JSON)]
+
+    procedure TestResponseContentTypes(
+        const ExpectedStatus: Integer;
+        const URL: String;
+        const RequestAccept: String;
+        const ResponseContentType: String);
 
     // test nullables
     [Test]
@@ -449,7 +466,6 @@ uses
   MVCFramework.Serializer.Defaults,
   JsonDataObjects,
   MVCFramework.Serializer.JsonDataObjects,
-  MVCFramework.Commons,
   System.SyncObjs,
   System.Generics.Collections,
   System.SysUtils,
@@ -467,7 +483,8 @@ uses
   Vcl.Graphics
 {$ENDIF}
     , TestConstsU, MVCFramework.Tests.Serializer.Entities,
-  MVCFramework.Logger, System.IOUtils, MVCFramework.Utils;
+  MVCFramework.Logger, System.IOUtils, MVCFramework.Utils,
+  System.Net.HttpClient, System.Net.URLClient;
 
 function GetServer: string;
 begin
@@ -488,7 +505,10 @@ procedure TBaseServerTest.Setup;
 begin
   inherited;
   RESTClient := TMVCRESTClient.New.BaseURL(TEST_SERVER_ADDRESS, 8888);
-  RESTClient.ReadTimeout(60 * 1000 * 30);
+  RESTClient
+    .ReadTimeout(60 * 1000 * 30)
+    .ProxyServer('localhost')
+    .ProxyPort(8080);
 end;
 
 procedure TBaseServerTest.TearDown;
@@ -1614,7 +1634,7 @@ begin
   lResp := RESTClient.Get('/injectable10');
   lJSON := StrToJSONObject(lResp.Content);
   try
-    Assert.areEqual('this is a string', lJSON.S['ParString'], 'wrong string');
+    Assert.areEqual('this is a string', lJSON.S['ParString'], 'wrong string: ' + lJSON.ToJSON());
     Assert.areEqual(1234, lJSON.I['ParInteger'], 'wrong ParInteger');
     Assert.areEqual<Int64>(1234567890, lJSON.L['ParInt64'], 'wrong ParInt64');
     Assert.areEqual('2011-11-17', lJSON.S['ParTDate'], 'wrong ParTDate');
@@ -1872,6 +1892,22 @@ var
 begin
   lRes := RESTClient.Get(URLSegment);
   Assert.areEqual(HTTP_STATUS.OK, lRes.StatusCode);
+end;
+
+procedure TServerTest.TestResponseContentTypes(
+  const ExpectedStatus: Integer;
+  const URL: String;
+  const RequestAccept: String;
+  const ResponseContentType: String);
+var
+  res: IMVCRESTResponse;
+begin
+  res := RESTClient
+    .ClearHeaders
+    .Accept(RequestAccept)
+    .Get(URL);
+  Assert.AreEqual<Integer>(ExpectedStatus, res.StatusCode);
+  Assert.StartsWith(ResponseContentType, res.ContentType);
 end;
 
 procedure TServerTest.TestObjectDict;
@@ -2291,9 +2327,25 @@ var
   res: IMVCRESTResponse;
   lContentType: string;
   lContentCharset: string;
+  lVal: String;
+  lISO8859_1Encoding: TEncoding;
 begin
-  res := RESTClient.Accept(TMVCMediaType.TEXT_PLAIN).Post('/testconsumes/textiso8859_1', 'אטילעש',
-    BuildContentType(TMVCMediaType.TEXT_PLAIN, TMVCCharSet.ISO88591));
+  lISO8859_1Encoding := TEncoding.GetEncoding('iso8859-1');
+  try
+    lVal :=
+      lISO8859_1Encoding
+        .GetString(
+          TEncoding.Convert(
+            TEncoding.Default,
+            lISO8859_1Encoding,
+            lISO8859_1Encoding.GetBytes('אטילעש')
+            )
+          );
+  finally
+    lISO8859_1Encoding.Free;
+  end;
+  res := RESTClient.Accept(TMVCMediaType.TEXT_PLAIN)
+    .Post('/testconsumes/textiso8859_1', lVal, BuildContentType(TMVCMediaType.TEXT_PLAIN, TMVCCharSet.ISO88591));
   Assert.areEqual<Integer>(HTTP_STATUS.OK, res.StatusCode);
   // Assert.AreNotEqual('אטילעש', res.Content, 'non iso8859-1 text is rendered ok whan should not');
   SplitContentMediaTypeAndCharset(res.ContentType, lContentType, lContentCharset);
@@ -2775,7 +2827,7 @@ begin
     lUrl := '..\' + lUrl;
     lRes := RESTClient.Accept(TMVCMediaType.TEXT_HTML).Get('/spa/' + lUrl);
     Assert.areEqual(404, lRes.StatusCode);
-    Assert.Contains(lRes.Content, 'EMVCException', true);
+    Assert.Contains(lRes.Content, '404', true);
     Assert.Contains(lRes.Content, 'Not Found', true);
   end;
 end;

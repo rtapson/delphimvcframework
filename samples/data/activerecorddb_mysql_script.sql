@@ -21,6 +21,25 @@ CREATE TABLE nullables_test (
     f_blob TEXT  NULL
 );
 
+CREATE TABLE `customers with spaces` (
+    `id with spaces` bigint NOT NULL,
+    `code with spaces` varchar(20),
+    `description with spaces` varchar(200),
+    `city with spaces` varchar(200),
+    `note with spaces` text,
+    `rating with spaces` integer
+);
+
+CREATE TABLE customers2 (
+    id bigint NOT null auto_increment primary key,
+    code character varying(20),
+    description character varying(200),
+    city character varying(200),
+    note text,
+    rating integer
+);
+
+
 
 CREATE TABLE customers (
 	id integer NOT NULL AUTO_INCREMENT,
@@ -30,6 +49,17 @@ CREATE TABLE customers (
 	rating INTEGER NULL,	
     note text character set "utf8mb4" collate "utf8mb4_unicode_ci" DEFAULT NULL,	
 	CONSTRAINT customers_pk PRIMARY KEY (id)
+);
+
+
+CREATE TABLE customers2 (
+	id integer NOT NULL AUTO_INCREMENT,
+	code varchar(20) NULL,
+	description varchar(200),
+	city varchar(200),
+	rating INTEGER NULL,	
+    note text character set "utf8mb4" collate "utf8mb4_unicode_ci" DEFAULT NULL,	
+	CONSTRAINT customers2_pk PRIMARY KEY (id)
 );
 
 

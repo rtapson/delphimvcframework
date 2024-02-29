@@ -1,12 +1,12 @@
-// ***************************************************************************
+ï»¿// ***************************************************************************
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
-// Collaborators with this file: Ezequiel Juliano Müller (ezequieljuliano@gmail.com)
+// Collaborators with this file: Ezequiel Juliano Mï¿½ller (ezequieljuliano@gmail.com)
 //
 // ***************************************************************************
 //
@@ -2112,6 +2112,9 @@ begin
         TFieldType.ftFloat, TFieldType.ftFMTBcd, TFieldType.ftBCD:
           Field.AsFloat := AJSONObject.F[lName];
 
+        TFieldType.ftExtended:
+          Field.AsExtended := AJSONObject.F[lName];
+
         ftString, ftWideString, ftMemo, ftWideMemo:
           Field.AsWideString := AJSONObject.S[lName];
 
@@ -2230,6 +2233,9 @@ begin
 
         TFieldType.ftFloat, TFieldType.ftFMTBcd, TFieldType.ftBCD:
           Field.AsFloat := AJSONObject.F[lName];
+
+        TFieldType.ftExtended:
+          Field.AsExtended := AJSONObject.F[lName];
 
         ftString, ftWideString, ftMemo, ftWideMemo:
           Field.AsWideString := AJSONObject.S[lName];

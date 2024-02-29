@@ -2,7 +2,7 @@
 //
 // Delphi MVC Framework
 //
-// Copyright (c) 2010-2023 Daniele Teti and the DMVCFramework Team
+// Copyright (c) 2010-2024 Daniele Teti and the DMVCFramework Team
 //
 // https://github.com/danieleteti/delphimvcframework
 //
@@ -373,6 +373,7 @@ end;
 
 procedure SaveColors;
 begin
+  Init;
   GSavedForeGround := GForeGround;
   GSavedBackGround := GBackGround;
 end;
