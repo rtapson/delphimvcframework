@@ -53,6 +53,15 @@ contains
   DMVC.Expert.NewUnitWizardEx in '..\..\ideexpert\DMVC.Expert.NewUnitWizardEx.pas',
   DMVC.Expert.ProjectWizardEx in '..\..\ideexpert\DMVC.Expert.ProjectWizardEx.pas',
   DMVC.Expert.Registration in '..\..\ideexpert\DMVC.Expert.Registration.pas',
-  DMVC.Splash.Registration in '..\..\ideexpert\DMVC.Splash.Registration.pas';
+  DMVC.Splash.Registration in '..\..\ideexpert\DMVC.Splash.Registration.pas',
+  DMVC.Expert.CodeGen.Templates.ControllerUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.Templates.ControllerUnit.pas',
+  DMVC.Expert.CodeGen.Templates.AureliusControllerUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.Templates.AureliusControllerUnit.pas',
+  DMVC.Expert.CodeGen.Templates.BaseUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.Templates.BaseUnit.pas',
+  DMVC.Expert.CodeGen.Templates.EmptyUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.Templates.EmptyUnit.pas',
+  DMVC.Expert.Codegen.GenerateAureliusControllers in '..\..\ideexpert\DMVC.Expert.Codegen.GenerateAureliusControllers.pas',
+  DMVC.Expert.CodeGen.Templates.Intf in '..\..\ideexpert\DMVC.Expert.CodeGen.Templates.Intf.pas',
+  DMVC.Expert.Menus.ProjectManagerMenuIntf in '..\..\ideexpert\DMVC.Expert.Menus.ProjectManagerMenuIntf.pas',
+  DMVC.Expert.CodeGen.NewEmptyUnit in '..\..\ideexpert\DMVC.Expert.CodeGen.NewEmptyUnit.pas',
+  DMVC.Expert.Forms.GenerateAureliusControllers in '..\..\ideexpert\DMVC.Expert.Forms.GenerateAureliusControllers.pas' {GenerateAureliusControllersForm};
 
 end.

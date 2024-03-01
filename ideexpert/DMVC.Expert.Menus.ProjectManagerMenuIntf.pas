@@ -80,7 +80,9 @@ uses
   DMVC.Expert.Forms.NewUnitWizard,
 //  DMVC.Expert.CodeGen.Templates.EmptyUnit,
   DMVC.Expert.CodeGen.NewEmptyUnit,
-  DMVC.Expert.Forms.GenerateAureliusControllers;
+  DMVC.Expert.Forms.GenerateAureliusControllers,
+  DMVC.Expert.CodeGen.Templates.AureliusControllerUnit,
+  DMVC.Expert.Codegen.GenerateAureliusControllers;
 
 resourcestring
   strSepCaption = '-';
@@ -312,11 +314,29 @@ end;
 
 procedure TDMVCProjectMenuCreatorHelper.NewAureliusController;
 begin
+  var ModuleServices := (BorlandIDEServices as IOTAModuleServices);
+  var Project := GetActiveProject;
   var GenAur := TGenerateAureliusControllersForm.Create(nil);
   try
     if GenAur.ShowModal = mrOk then
     begin
       //Get the Entities that are selected and create new controller units
+      for var i := 0 to GenAur.EntitiesList.Items.Count - 1 do
+      begin
+        if GenAur.EntitiesList.Selected[i] then
+        begin
+          var Entity := TAureliusListItem(GenAur.EntitiesList.Items.Objects[i]);
+          var ControllerCreator := TDMVCAureliusControllerUnitTemplate.Create(Entity,
+            Entity.FileName, Entity.EntityClassName, Entity.EnityUnitName, '');
+//          var SourceFile := TSourceFile.Create(ControllerUnit.GetSource.Text, []);
+          //TNewControllerUnitEx(ControllerCreator).ImplFileName := WizardForm.FileLocationEdit.Text;
+          var ControllerUnit := ModuleServices.CreateModule(ControllerCreator);
+          if Project <> nil then
+          begin
+            Project.AddFile(ControllerUnit.FileName, True);
+          end;
+        end;
+      end;
     end;
   finally
     GenAur.Free;
