@@ -88,6 +88,7 @@ begin
               WizardForm.FileLocation,
               WizardForm.ApiPath,
               WizardForm.ControllerEndpoint,
+              nil,
               APersonality));
           if Project <> nil then
           begin

@@ -132,6 +132,7 @@ begin
               '',
               '',
               '',
+              nil,
               APersonality);
             ControllerUnit := ModuleServices.CreateModule(ControllerCreator);
             if Project <> nil then

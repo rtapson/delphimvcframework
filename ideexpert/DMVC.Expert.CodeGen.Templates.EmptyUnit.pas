@@ -42,6 +42,7 @@ uses
 type
   TDMVCUnitTemplate = class(TMVCBaseUnitTemplate)
   protected
+    procedure AddCode; override;
     procedure BuildTemplate; override;
   public
     constructor Create(const FileName: string); reintroduce;
@@ -50,6 +51,11 @@ type
 implementation
 
 { TDMVCControllerUnitTemplate }
+
+procedure TDMVCUnitTemplate.AddCode;
+begin
+
+end;
 
 procedure TDMVCUnitTemplate.BuildTemplate;
 begin

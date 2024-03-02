@@ -6,10 +6,11 @@ uses
   Generics.Collections,
   DMVC.Expert.CodeGen.Templates.BaseUnit,
   DMVC.Expert.CodeGen.Templates.Intf,
-  DMVC.Expert.CodeGen.GenerateAureliusControllers;
+  DMVC.Expert.CodeGen.GenerateAureliusControllers,
+  DMVC.Expert.CodeGen.Templates.ControllerUnit;
 
 type
-  TDMVCAureliusControllerUnitTemplate = class(TMVCBaseUnitTemplate)
+  TDMVCAureliusControllerUnitTemplate = class(TDMVCControllerUnitTemplate)
   private
     FControllerClassName: string;
     FActionFilters: Boolean;
@@ -19,10 +20,9 @@ type
 
     FControllerType: TObjectList<TTypeDefinitionEntry>;
 
-    procedure AddActionFilters;
-    procedure AddCode;
   protected
-    procedure BuildTemplate; override;
+    procedure AddCode; override;
+//    procedure BuildTemplate; override;
   public
     constructor Create(
       const AureliusItem: TAureliusListItem;
@@ -37,22 +37,45 @@ type
 
 implementation
 
+uses
+  SysUtils;
+
 { TDMVCAureliusControllerUnitTemplate }
 
-procedure TDMVCAureliusControllerUnitTemplate.AddActionFilters;
-begin
-
-end;
-
 procedure TDMVCAureliusControllerUnitTemplate.AddCode;
+var
+  EntityName: string;
 begin
+  EntityName := FControllerClassName.Substring(1);
+  if EntityName.EndsWith('Controller') then
+    EntityName := EntityName.Replace('Controller', '');
 
-end;
-
-procedure TDMVCAureliusControllerUnitTemplate.BuildTemplate;
-begin
-  inherited;
-
+  ImplementationCode.Add('');
+  ImplementationCode.Add(Format('//Sample CRUD Actions for a "%s" entity', [EntityName]));
+  ImplementationCode.Add(Format('procedure %0:s.Get%1:ss;', [FControllerClassName, EntityName]));
+  ImplementationCode.Add('begin');
+  ImplementationCode.Add(Format('  //todo: render a list of %ss', [EntityName]));
+  ImplementationCode.Add('end;');
+  ImplementationCode.Add('');
+  ImplementationCode.Add(Format('procedure %0:s.Get%1:s(id: Integer);', [FControllerClassName, EntityName]));
+  ImplementationCode.Add('begin');
+  ImplementationCode.Add(Format('  //todo: render the %s by id', [EntityName]));
+  ImplementationCode.Add('end;');
+  ImplementationCode.Add('');
+  ImplementationCode.Add(Format('procedure %0:s.Create%1:s;', [FControllerClassName, EntityName]));
+  ImplementationCode.Add('begin');
+  ImplementationCode.Add(Format('  //todo: create a new %s', [EntityName]));
+  ImplementationCode.Add('end;');
+  ImplementationCode.Add('');
+  ImplementationCode.Add(Format('procedure %0:s.Update%1:s(id: Integer);', [FControllerClassName, EntityName]));
+  ImplementationCode.Add('begin');
+  ImplementationCode.Add(Format('  //todo: update %s by id', [EntityName]));
+  ImplementationCode.Add('end;');
+  ImplementationCode.Add('');
+  ImplementationCode.Add(Format('procedure %0:s.Delete%1:s(id: Integer);', [FControllerClassName, EntityName]));
+  ImplementationCode.Add('begin');
+  ImplementationCode.Add(Format('  //todo: delete %s by id', [EntityName]));
+  ImplementationCode.Add('end;');
 end;
 
 constructor TDMVCAureliusControllerUnitTemplate.Create(

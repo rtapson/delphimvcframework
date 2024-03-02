@@ -50,12 +50,12 @@ type
     FPath: string;
 
     FControllerType: TObjectList<TTypeDefinitionEntry>;
-
-    procedure AddActionFilters;
-    procedure AddSampleMethods;
-    procedure AddCRUDMethods;
-    procedure AddCode;
   protected
+    procedure AddActionFilters; virtual;
+    procedure AddSampleMethods; virtual;
+    procedure AddCRUDMethods; virtual;
+
+    procedure AddCode; override;
     procedure BuildTemplate; override;
   public
     constructor Create(

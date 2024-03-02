@@ -37,7 +37,8 @@ interface
 uses
   ToolsApi,
   System.IOUtils,
-  DMVC.Expert.CodeGen.NewUnit;
+  DMVC.Expert.CodeGen.NewUnit,
+  DMVC.Expert.CodeGen.Templates.Intf;
 
 type
   TNewControllerUnitEx = class(TNewUnit)
@@ -49,6 +50,8 @@ type
     FFileLocation: string;
     FApiPath: string;
     FControllerEndpoint: string;
+    FCodeTemplate: IDMVCCodeTemplate;
+
     function NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string)
       : IOTAFile; override;
   public
@@ -58,6 +61,7 @@ type
       const FileLocation: string;
       const ApiPath: string;
       const ControllerEndPoint: string;
+      const CodeTemplate: IDMVCCodeTemplate = nil;
       const APersonality: string = '');
   end;
 
@@ -78,8 +82,7 @@ uses
   VCL.Dialogs,
   DMVC.Expert.CodeGen.Templates,
   DMVC.Expert.CodeGen.SourceFile,
-  DMVC.Expert.CodeGen.Templates.ControllerUnit,
-  DMVC.Expert.CodeGen.Templates.Intf;
+  DMVC.Expert.CodeGen.Templates.ControllerUnit;
 
 constructor TNewControllerUnitEx.Create(
       const aCreateIndexMethod, aCreateCRUDMethods, aCreateActionFiltersMethods: Boolean;
@@ -87,6 +90,7 @@ constructor TNewControllerUnitEx.Create(
       const FileLocation: string;
       const ApiPath: string;
       const ControllerEndPoint: string;
+      const CodeTemplate: IDMVCCodeTemplate = nil;
       const APersonality: string = '');
 begin
   Assert(Length(AControllerClassName) > 0);
@@ -102,20 +106,17 @@ begin
   FFileLocation := FileLocation;
   FApiPath := ApiPath;
   FControllerEndpoint := ControllerEndPoint;
+  FCodeTemplate := CodeTemplate;
 end;
 
-function TNewControllerUnitEx.NewImplSource(const ModuleIdent, FormIdent,
-  AncestorIdent: string): IOTAFile;
+function TNewControllerUnitEx.NewImplSource(const ModuleIdent, FormIdent, AncestorIdent: string): IOTAFile;
 var
   lUnitIdent: string;
   lFormName: string;
   lFileName: string;
-  ControllerUnit: IDMVCCodeTemplate;
   lBOClassesIntf: string;
   lBOClassesImpl: string;
 begin
-
-
   lBOClassesIntf := sBOClassesIntf;
   lBOClassesImpl := Format(sBOClassesImpl, ['TPerson']);
 
@@ -133,8 +134,9 @@ begin
     lUnitIdent := ModuleIdent;
   end;
 
-  ControllerUnit := TDMVCControllerUnitTemplate.Create(lUnitIdent, FControllerClassName, FApiPath, FControllerEndpoint, FCreateCRUDMethods, FCreateActionFiltersMethods, FCreateIndexMethod);
-  Result := TSourceFile.Create(ControllerUnit.GetSource.Text, []);
+  if not Assigned(FCodeTemplate) then
+    FCodeTemplate := TDMVCControllerUnitTemplate.Create(lUnitIdent, FControllerClassName, FApiPath, FControllerEndpoint, FCreateCRUDMethods, FCreateActionFiltersMethods, FCreateIndexMethod);
+  Result := TSourceFile.Create(FCodeTemplate.GetSource.Text, []);
 //    [lUnitIdent, FControllerClassName, lIndexMethodIntf, lIndexMethodImpl, lActionFiltersMethodsIntf, lActionFiltersMethodsImpl, lCRUDMethodsIntf, lCRUDMethodsImpl]);
 //      lUnitIdent,
 //      FControllerClassName,

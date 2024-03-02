@@ -76,6 +76,7 @@ type
     function GetFinalizationSection: TStringList;
     function GetInitializationSection: TStringList;
   protected
+    procedure AddCode; virtual; abstract;
     procedure BuildTemplate; virtual;
   public
     constructor Create(const UnitName: string); virtual;

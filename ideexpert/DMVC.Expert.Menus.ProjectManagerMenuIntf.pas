@@ -328,12 +328,21 @@ begin
           var Entity := TAureliusListItem(GenAur.EntitiesList.Items.Objects[i]);
           var ControllerCreator := TDMVCAureliusControllerUnitTemplate.Create(Entity,
             Entity.FileName, Entity.EntityClassName, Entity.EnityUnitName, '');
-//          var SourceFile := TSourceFile.Create(ControllerUnit.GetSource.Text, []);
-          //TNewControllerUnitEx(ControllerCreator).ImplFileName := WizardForm.FileLocationEdit.Text;
-          var ControllerUnit := ModuleServices.CreateModule(ControllerCreator);
+
+          var ControllerUnit := ModuleServices.CreateModule(
+            TNewControllerUnitEx.Create(
+              False {CreateIndexMethod},
+              False {CreateCRUDMethods},
+              False {CreateActionFiltersMethods},
+              Entity.EntityClassName,
+              Entity.FileName,
+              '' {ApiPath},
+              '' {WizardForm.ControllerEndpoint},
+              ControllerCreator,
+              sDelphiPersonality));
           if Project <> nil then
           begin
-            Project.AddFile(ControllerUnit.FileName, True);
+            Project.AddFile(ControllerUnit.FileName, true);
           end;
         end;
       end;
@@ -369,6 +378,7 @@ begin
         WizardForm.FileLocation,
         WizardForm.ApiPath,
         WizardForm.ControllerEndpoint,
+        nil,
         sDelphiPersonality);
 
       TNewControllerUnitEx(ControllerCreator).ImplFileName := WizardForm.FileLocationEdit.Text;
